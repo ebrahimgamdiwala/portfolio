@@ -28,7 +28,6 @@ import { Funfair } from "./Funfair";
 import { Midway } from "./Midway";
 import { Structures } from "./Structures";
 import { Props } from "./Props";
-import { Preload } from "@react-three/drei";
 import { Atmosphere } from "./Atmosphere";
 import { Fireworks } from "./Fireworks";
 import { LightPool } from "./LightPool";
@@ -171,9 +170,7 @@ export function Scene({ world }: { world: ParkWorld }) {
 
       <Atmosphere />
       <Fireworks />
-
       <Effects />
-      <Preload all />
     </ParkProvider>
   );
 }
