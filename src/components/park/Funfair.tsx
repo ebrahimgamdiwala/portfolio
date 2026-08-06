@@ -694,12 +694,13 @@ function PirateShip({ slot, index }: { slot: Slot; index: number }) {
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    const swingAngle = -Math.sin(t * 0.65) * 0.85;
+    const swingAngle = Math.sin(t * 0.65) * 0.85;
     if (arm.current) {
       arm.current.rotation.x = swingAngle;
     }
     const L = 19;
-    const localZ = Math.sin(swingAngle) * L;
+    // Rotation of (0, -L, 0) about X-axis by swingAngle gives local z = -L * sin(swingAngle)
+    const localZ = -Math.sin(swingAngle) * L;
     const localY = H - Math.cos(swingAngle) * L + 2;
     const cosR = Math.cos(slot.rot);
     const sinR = Math.sin(slot.rot);

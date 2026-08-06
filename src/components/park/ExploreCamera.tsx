@@ -235,12 +235,11 @@ export function ExploreCamera() {
       } else if (isPirateShip) {
         const fwdX = Math.sin(seat.yaw);
         const fwdZ = Math.cos(seat.yaw);
-        want.set(seat.pos.x, seat.pos.y + 1.2, seat.pos.z);
-        cam.position.lerp(want, 0.4);
+        cam.position.set(seat.pos.x, seat.pos.y + 1.6, seat.pos.z);
         aim.set(
-          cam.position.x + fwdX * 15,
-          cam.position.y - 1.0,
-          cam.position.z + fwdZ * 15,
+          cam.position.x + fwdX * 16,
+          cam.position.y - 0.5,
+          cam.position.z + fwdZ * 16,
         );
       } else {
         const outX = Math.sin(seat.yaw);
@@ -278,14 +277,19 @@ export function ExploreCamera() {
     if (keys.current["d"]) inputSide += 1;
     if (keys.current["a"]) inputSide -= 1;
 
+    const hasInput = inputFwd !== 0 || inputSide !== 0;
+
     // Pressing WASD movement keys while locked at a marker instantly resumes free walking
-    if (selected && (inputFwd !== 0 || inputSide !== 0)) {
-      explore.select(null);
+    if (hasInput) {
+      if (selected) explore.select(null);
       lock.current = 0;
     }
 
-    const target = marker ? 1 : 0;
-    lock.current += (target - lock.current) * Math.min(1, step * 2.6);
+    const isParked = Boolean(marker) && !hasInput;
+    const target = isParked ? 1 : 0;
+    if (!hasInput) {
+      lock.current += (target - lock.current) * Math.min(1, step * 2.6);
+    }
 
     if (lock.current < 0.995) {
       const isShift = keys.current["shift"] || keys.current["shiftleft"] || keys.current["shiftright"];
