@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AdditiveBlending, DoubleSide, type Group, type MeshBasicMaterial } from "three";
+import { AdditiveBlending, CatmullRomCurve3, DoubleSide, Vector3, type Group, type MeshBasicMaterial } from "three";
 import { posterOf, stations, type Station, type StationItem } from "@/lib/content";
 import { SLOTS, type Slot } from "@/lib/park/layout";
 import { neonText, panel } from "@/lib/park/sign";
@@ -109,6 +109,16 @@ function Plinth({ item, slot, station }: { item: StationItem; slot: Slot; statio
     [poster.headline, poster.sub, station.accent],
   );
 
+  const handleCurve = useMemo(() => {
+    return new CatmullRomCurve3([
+      new Vector3(2.4, 2.8, 0), // attach securely to upper cup wall
+      new Vector3(3.4, 3.0, 0), // swoop wide out and up
+      new Vector3(3.8, 1.8, 0), // curve gracefully down
+      new Vector3(2.7, -0.1, 0), // curve back in
+      new Vector3(1.6, -0.3, 0), // attach deeply into the lower base bowl
+    ]);
+  }, []);
+
   useFrame((_, dt) => {
     if (cup.current) cup.current.rotation.y += dt * 0.35;
   });
@@ -131,68 +141,67 @@ function Plinth({ item, slot, station }: { item: StationItem; slot: Slot; statio
         <meshBasicMaterial color={station.accent} toneMapped={false} />
       </mesh>
 
-      <group ref={cup} position={[0, 9.2, 0]}>
-        {/* Tiered dark mahogany / marble base block */}
-        <mesh position={[0, -2.5, 0]} castShadow receiveShadow>
-          <boxGeometry args={[2.4, 0.8, 2.4]} />
-          <meshStandardMaterial color="#161210" roughness={0.3} metalness={0.2} />
+      <group ref={cup} position={[0, 9.4, 0]}>
+        {/* Dark Marble & Gold Pedestal */}
+        <mesh position={[0, -2.6, 0]} frustumCulled={false} castShadow receiveShadow>
+          <cylinderGeometry args={[1.8, 2.2, 1.2, 28]} />
+          <meshStandardMaterial color="#121217" roughness={0.25} metalness={0.4} />
         </mesh>
-        <mesh position={[0, -2.05, 0]} castShadow>
-          <cylinderGeometry args={[1.5, 1.7, 0.3, 24]} />
-          <meshPhysicalMaterial color="#ffcf48" roughness={0.12} metalness={0.95} clearcoat={1} />
+        {/* Engraved Plaque */}
+        <mesh position={[0, -2.6, 1.95]} frustumCulled={false}>
+          <planeGeometry args={[1.8, 0.6]} />
+          <meshPhysicalMaterial color="#ffe066" metalness={0.95} roughness={0.15} />
         </mesh>
-
-        {/* Sculpted Turned Stem */}
-        <mesh position={[0, -1.5, 0]} castShadow>
-          <cylinderGeometry args={[0.45, 0.95, 0.8, 24]} />
-          <meshPhysicalMaterial color="#ffcf48" roughness={0.12} metalness={0.95} clearcoat={1} />
-        </mesh>
-        <mesh position={[0, -0.95, 0]} castShadow>
-          <sphereGeometry args={[0.7, 20, 16]} />
-          <meshPhysicalMaterial color="#ffd700" roughness={0.1} metalness={0.98} clearcoat={1} />
-        </mesh>
-        <mesh position={[0, -0.45, 0]} castShadow>
-          <cylinderGeometry args={[1.1, 0.5, 0.5, 24]} />
-          <meshPhysicalMaterial color="#ffcf48" roughness={0.12} metalness={0.95} clearcoat={1} />
+        <mesh position={[0, -1.9, 0]} frustumCulled={false} castShadow>
+          <cylinderGeometry args={[1.3, 1.6, 0.35, 28]} />
+          <meshPhysicalMaterial color="#ffc700" roughness={0.1} metalness={0.98} clearcoat={1} />
         </mesh>
 
-        {/* Main Chalice / Cup Body */}
-        {/* Lower Bowl */}
-        <mesh position={[0, 0.1, 0]} rotation={[Math.PI, 0, 0]} castShadow>
-          <sphereGeometry args={[1.7, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshPhysicalMaterial color="#ffd700" roughness={0.1} metalness={0.98} clearcoat={1} side={DoubleSide} />
+        {/* Turned Stem */}
+        <mesh position={[0, -1.3, 0]} frustumCulled={false} castShadow>
+          <cylinderGeometry args={[0.5, 0.9, 0.9, 24]} />
+          <meshPhysicalMaterial color="#ffc700" roughness={0.1} metalness={0.98} clearcoat={1} />
         </mesh>
-        {/* Upper Flared Cup Wall */}
-        <mesh position={[0, 1.45, 0]} castShadow>
-          <cylinderGeometry args={[2.2, 1.7, 2.7, 28, 1, true]} />
-          <meshPhysicalMaterial color="#ffd700" roughness={0.1} metalness={0.98} clearcoat={1} side={DoubleSide} />
-        </mesh>
-        {/* Inner Solid Floor */}
-        <mesh position={[0, 0.12, 0]}>
-          <cylinderGeometry args={[1.65, 1.65, 0.08, 24]} />
-          <meshPhysicalMaterial color="#e6b800" roughness={0.2} metalness={0.9} />
-        </mesh>
-        {/* Rolled Golden Lip Rim */}
-        <mesh position={[0, 2.8, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <torusGeometry args={[2.2, 0.16, 12, 32]} />
+        <mesh position={[0, -0.75, 0]} frustumCulled={false} castShadow>
+          <torusGeometry args={[0.8, 0.22, 12, 28]} />
           <meshPhysicalMaterial color="#ffe054" roughness={0.08} metalness={1} clearcoat={1} />
         </mesh>
 
-        {/* Sculpted Ornate Handles (Left & Right) */}
+        {/* Main Chalice Body */}
+        {/* Lower Base Dome */}
+        <mesh position={[0, -0.2, 0]} rotation={[Math.PI, 0, 0]} frustumCulled={false} castShadow>
+          <sphereGeometry args={[1.5, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshPhysicalMaterial color="#ffd700" roughness={0.08} metalness={0.98} clearcoat={1} side={DoubleSide} />
+        </mesh>
+        {/* Main Flared Body */}
+        <mesh position={[0, 1.4, 0]} frustumCulled={false} castShadow>
+          <cylinderGeometry args={[2.5, 1.4, 3.2, 32, 1, true]} />
+          <meshPhysicalMaterial color="#ffd700" roughness={0.08} metalness={0.98} clearcoat={1} side={DoubleSide} />
+        </mesh>
+        {/* Inner Gold Floor */}
+        <mesh position={[0, -0.15, 0]} frustumCulled={false}>
+          <cylinderGeometry args={[1.45, 1.45, 0.1, 28]} />
+          <meshPhysicalMaterial color="#d4a000" roughness={0.2} metalness={0.9} />
+        </mesh>
+        {/* Thick Gold Lip Rim */}
+        <mesh position={[0, 3.0, 0]} rotation={[Math.PI / 2, 0, 0]} frustumCulled={false} castShadow>
+          <torusGeometry args={[2.5, 0.22, 16, 36]} />
+          <meshPhysicalMaterial color="#ffe054" roughness={0.05} metalness={1} clearcoat={1} />
+        </mesh>
+
+        {/* Iconic Championship "Big Ear" Handles (Left & Right) */}
         {[-1, 1].map((sx) => (
-          <group key={sx} position={[sx * 2.1, 1.35, 0]} rotation={[0, 0, sx * -0.2]}>
-            <mesh frustumCulled={false} castShadow>
-              <torusGeometry args={[0.95, 0.18, 12, 24, Math.PI * 0.95]} />
-              <meshPhysicalMaterial color="#ffd700" roughness={0.1} metalness={0.98} clearcoat={1} />
-            </mesh>
-          </group>
+          <mesh key={sx} scale={[sx, 1, 1]} frustumCulled={false} castShadow>
+            <tubeGeometry args={[handleCurve, 24, 0.22, 12, false]} />
+            <meshPhysicalMaterial color="#ffe054" roughness={0.05} metalness={1} clearcoat={1} />
+          </mesh>
         ))}
 
-        {/* Top Victory Star / Crown Finial */}
-        <group position={[0, 3.4, 0]}>
-          <mesh castShadow position={[0, 0.35, 0]} rotation={[0, 0, Math.PI / 4]}>
-            <octahedronGeometry args={[0.42, 0]} />
-            <meshPhysicalMaterial color="#ffffff" emissive="#ffea78" emissiveIntensity={0.6} roughness={0.1} metalness={0.9} />
+        {/* Top Victory Star Emblem Finial */}
+        <group position={[0, 4.3, 0]}>
+          <mesh frustumCulled={false} castShadow position={[0, 0, 0]} rotation={[0, 0, Math.PI / 4]}>
+            <octahedronGeometry args={[0.55, 0]} />
+            <meshPhysicalMaterial color="#ffffff" emissive="#ffea78" emissiveIntensity={0.8} roughness={0.05} metalness={0.95} />
           </mesh>
         </group>
       </group>
