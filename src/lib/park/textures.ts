@@ -136,38 +136,95 @@ function bake(
  * puddle the surface goes glassy and the normal flattens out, so reflections of
  * the neon survive it.
  */
-export function asphalt(repeat = 42): Surface {
+/**
+ * Wet tarmac.
+ *
+ * HIGH-FREQUENCY CONTENT ONLY. This tile covers five kilometres of ground, and
+ * anything in it slower than a couple of metres across resolves into a visible
+ * repeating swell the moment you look at the distance — which is exactly what
+ * large "wear" and "pool" octaves used to do here. Grain the eye cannot count
+ * is safe; blotches it can are not.
+ *
+ * All the macro variation the ground actually needs — paths, pads, dirt, damp
+ * patches — lives in `parkMap.ts`, which is stretched across the park exactly
+ * once and therefore cannot repeat.
+ */
+export function asphalt(repeat = 300): Surface {
   const n = makeNoise2D(11);
   const S = 512;
-  // Low bump on purpose: crank it and the aggregate starts resolving into a
-  // visible woven grid wherever the tile repeats across open tarmac.
-  return bake(`asphalt:${repeat}`, S, repeat, 0.4, (x, y) => {
+  // Low bump too: crank it and the aggregate resolves into a woven grid.
+  return bake(`asphalt:${repeat}`, S, repeat, 0.35, (x, y) => {
     const u = (x / S) * 8;
     const v = (y / S) * 8;
 
-    const grit = worley(n, u * 9, v * 9);
-    const grain = fbm(n, u * 26, v * 26, 3);
-    const wear = fbm(n, u * 1.6, v * 1.6, 4);
+    const grit = worley(n, u * 11, v * 11);
+    const grain = fbm(n, u * 30, v * 30, 3);
+    const fine = fbm(n, u * 64, v * 64, 2);
 
-    // large slow pools, biased to the low ground of the grunge field
-    const pool = fbm(n, u * 0.85 + 30, v * 0.85 - 12, 3);
-    const puddle = smoothstep(0.5, 0.61, pool);
-    const damp = smoothstep(0.42, 0.56, pool);
+    // puddles, but small ones — at this tile scale they are metre-wide, which
+    // is both realistic and far too fine to read as a pattern
+    const pool = fbm(n, u * 3.4 + 30, v * 3.4 - 12, 2);
+    const puddle = smoothstep(0.52, 0.63, pool);
+    const damp = smoothstep(0.44, 0.58, pool);
 
-    // Kept deliberately light for tarmac: under a park's worth of practical
-    // lights the ground is the main thing bouncing illumination back up, and a
-    // physically-dark asphalt albedo leaves the whole scene looking unlit.
-    let base = 0.15 + grit * 0.035 + grain * 0.03 + wear * 0.09;
-    // tyre-polished lanes
-    base *= mix(1, 0.78, smoothstep(0.55, 0.85, fbm(n, u * 0.4, v * 3.2, 2)));
-    // standing water reads darker than the tarmac around it
-    const alb = mix(base, base * 0.5, puddle);
+    const base = 0.062 + grit * 0.016 + grain * 0.013 + fine * 0.008;
+    const alb = mix(base, base * 0.62, puddle);
+    const h = mix(grit * 0.5 + grain * 0.5, 0.5, puddle * 0.9);
+    const rough = mix(mix(0.9, 0.66, damp), 0.06, puddle);
 
-    const h = mix(grit * 0.55 + grain * 0.45, 0.5, puddle * 0.92);
-    const rough = mix(mix(0.88, 0.62, damp), 0.05, puddle);
-
-    return { r: alb * 1.02, g: alb, b: alb * 1.12, h, rough };
+    return { r: alb * 1.02, g: alb, b: alb * 1.1, h, rough };
   });
+}
+
+/** Vertical ramp, opaque at the bottom, clear at the top. */
+export function verticalFade(): Texture {
+  const key = "verticalFade";
+  const hit = flat.get(key);
+  if (hit) return hit;
+
+  const c = canvas(4);
+  c.width = 4;
+  c.height = 256;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createLinearGradient(0, 256, 0, 0);
+  g.addColorStop(0, "#ffffff");
+  g.addColorStop(0.45, "#a8a8a8");
+  g.addColorStop(1, "#000000");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 4, 256);
+
+  const tex = new CanvasTexture(c);
+  tex.needsUpdate = true;
+  flat.set(key, tex);
+  return tex;
+}
+
+/**
+ * Radial ramp used to sink everything past the park's edge into the haze, so
+ * open ground never has to hold up to being looked at from a kilometre away.
+ */
+export function outfieldFade(): Texture {
+  const key = "outfieldFade";
+  const hit = flat.get(key);
+  if (hit) return hit;
+
+  const S = 512;
+  const c = canvas(S);
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  // clear out to the tree line, then down hard — the band in between is where
+  // a tiled surface gets far enough away to start showing its repeat
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(0.16, "rgba(0,0,0,0)");
+  g.addColorStop(0.3, "rgba(0,0,0,0.86)");
+  g.addColorStop(1, "rgba(0,0,0,0.98)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
+
+  const tex = new CanvasTexture(c);
+  tex.needsUpdate = true;
+  flat.set(key, tex);
+  return tex;
 }
 
 /** Poured concrete — plaza slabs, plinths, footings. */

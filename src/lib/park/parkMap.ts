@@ -117,66 +117,80 @@ export function parkMap(): Texture {
     [ZONES.plaza.x, ZONES.plaza.z],
   ];
 
-  // draw the kerb under the path first so every walkway gets an edge
-  stroke(ctx, ring, 15, CONCRETE_EDGE);
-  stroke(ctx, ring, 12, CONCRETE);
+  const avenue: [number, number][] = [
+    [LANDMARKS.gate.x, LANDMARKS.gate.z + 30],
+    [LANDMARKS.gate.x, LANDMARKS.gate.z - 10],
+    [ZONES.plaza.x, ZONES.plaza.z],
+  ];
 
-  // the entrance avenue
-  stroke(
-    ctx,
-    [
-      [LANDMARKS.gate.x, LANDMARKS.gate.z + 30],
-      [LANDMARKS.gate.x, LANDMARKS.gate.z - 10],
-      [ZONES.plaza.x, ZONES.plaza.z],
-    ],
-    22,
-    CONCRETE_EDGE,
-  );
-  stroke(
-    ctx,
-    [
-      [LANDMARKS.gate.x, LANDMARKS.gate.z + 30],
-      [LANDMARKS.gate.x, LANDMARKS.gate.z - 10],
-      [ZONES.plaza.x, ZONES.plaza.z],
-    ],
-    18,
-    CONCRETE,
-  );
-
-  // spurs out to everything that stands on the ground
-  const spurs: { x: number; z: number; pad: number }[] = [];
+  // everything that stands on the ground needs joining to the network
+  const stops: { x: number; z: number; pad: number }[] = [];
   for (const slots of Object.values(SLOTS)) {
-    for (const s of slots) spurs.push({ x: s.x, z: s.z, pad: 16 });
+    for (const s of slots) stops.push({ x: s.x, z: s.z, pad: 16 });
   }
   for (const [kind, slots] of Object.entries(FURNITURE)) {
     const pad = kind === "kiosks" ? 8 : kind === "bigTop" ? 30 : 20;
-    for (const s of slots) spurs.push({ x: s.x, z: s.z, pad });
+    for (const s of slots) stops.push({ x: s.x, z: s.z, pad });
   }
 
-  for (const s of spurs) {
-    // join each ride to the nearest point on the ring
-    let best = ring[0];
+  /**
+   * Nearest point anywhere on the ring, not merely its nearest corner.
+   * Snapping to vertices funnels a dozen spurs into the same eight points and
+   * the result reads as a starburst rather than a park.
+   */
+  function meetRing(x: number, z: number): [number, number] {
+    let best: [number, number] = ring[0];
     let bestD = Infinity;
-    for (const r of ring) {
-      const d = (r[0] - s.x) ** 2 + (r[1] - s.z) ** 2;
+    for (let i = 0; i < ring.length - 1; i++) {
+      const [ax, az] = ring[i];
+      const [bx, bz] = ring[i + 1];
+      const dx = bx - ax;
+      const dz = bz - az;
+      const len2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2));
+      const px = ax + dx * t;
+      const pz = az + dz * t;
+      const d = (px - x) ** 2 + (pz - z) ** 2;
       if (d < bestD) {
         bestD = d;
-        best = r;
+        best = [px, pz];
       }
     }
-    const mid: [number, number] = [
-      (best[0] + s.x) / 2 + rng.spread(18),
-      (best[1] + s.z) / 2 + rng.spread(18),
-    ];
-    stroke(ctx, [best, mid, [s.x, s.z]], 9, CONCRETE_EDGE);
-    stroke(ctx, [best, mid, [s.x, s.z]], 7, CONCRETE);
+    return best;
   }
 
-  // pads under the rides
-  for (const s of spurs) {
-    disc(ctx, s.x, s.z, s.pad + 1.6, CONCRETE_EDGE);
-    disc(ctx, s.x, s.z, s.pad, CONCRETE);
+  // Collect the whole network before drawing any of it. Stroking kerb-then-fill
+  // per path means every later kerb cuts a dark scar across the fills already
+  // laid down, and the junctions come out looking cut rather than joined.
+  const paths: { pts: [number, number][]; w: number }[] = [
+    { pts: ring, w: 12 },
+    { pts: avenue, w: 18 },
+  ];
+  const pads: { x: number; z: number; r: number }[] = [];
+
+  for (const s of stops) {
+    const meet = meetRing(s.x, s.z);
+    const run = Math.hypot(meet[0] - s.x, meet[1] - s.z);
+    pads.push({ x: s.x, z: s.z, r: s.pad });
+    // already on the walkway — a spur here would just be a stub
+    if (run < s.pad + 6) continue;
+
+    // bend the spur a little so the network is not all radial spokes
+    const mid: [number, number] = [
+      (meet[0] + s.x) / 2 + rng.spread(Math.min(20, run * 0.22)),
+      (meet[1] + s.z) / 2 + rng.spread(Math.min(20, run * 0.22)),
+    ];
+    paths.push({ pts: [meet, mid, [s.x, s.z]], w: run > 90 ? 8 : 6.5 });
+    // a fillet where it meets the ring, so the junction is rounded not butted
+    pads.push({ x: meet[0], z: meet[1], r: 8 });
   }
+
+  // pass one: every kerb
+  for (const p of paths) stroke(ctx, p.pts, p.w + 3, CONCRETE_EDGE);
+  for (const p of pads) disc(ctx, p.x, p.z, p.r + 1.6, CONCRETE_EDGE);
+  // pass two: every fill
+  for (const p of paths) stroke(ctx, p.pts, p.w, CONCRETE);
+  for (const p of pads) disc(ctx, p.x, p.z, p.r, CONCRETE);
 
   /* ── wear and dirt ─────────────────────────────────────────────────────── */
 

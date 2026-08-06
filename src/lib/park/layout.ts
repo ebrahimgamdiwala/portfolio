@@ -69,7 +69,6 @@ export const SLOTS: Record<AttractionKind, Slot[]> = {
   ferrisWheel: [{ x: -150, z: -178, rot: 0.88 }],
 
   mainStage: [{ x: -56, z: -244, rot: 0.43 }],
-  signalTower: [{ x: 46, z: -246, rot: -0.3 }],
 
   // Two ranks facing each other across the rails, offset ±30 on the
   // perpendicular so the train threads the corridor rather than the booths.

@@ -165,11 +165,13 @@ function Trees({ set }: { set: PropSet }) {
         tiers.current[k]?.setMatrixAt(i, m4.compose(v3, q4, scale));
       });
 
-      // Dark. These are horizon dressing, and a bright tree line at night
-      // pulls the eye straight off whatever the ride is passing.
-      colors[i * 3] = 0.022 + t.tint * 0.02;
-      colors[i * 3 + 1] = 0.042 + t.tint * 0.03;
-      colors[i * 3 + 2] = 0.03 + t.tint * 0.014;
+      // A multiplier on the material's own colour, not a colour in its own
+      // right — instanceColor multiplies, so putting the darkness here as well
+      // just makes every tree black.
+      const shade = 0.7 + t.tint * 0.55;
+      colors[i * 3] = shade * 0.9;
+      colors[i * 3 + 1] = shade;
+      colors[i * 3 + 2] = shade * 0.78;
     });
 
     if (trunks.current) trunks.current.instanceMatrix.needsUpdate = true;
@@ -196,7 +198,9 @@ function Trees({ set }: { set: PropSet }) {
           frustumCulled={false}
         >
           <coneGeometry args={[1, 1, 7]} />
-          <meshStandardMaterial roughness={0.96} />
+          {/* horizon dressing: a bright tree line at night pulls the eye
+              straight off whatever the ride is actually passing */}
+          <meshStandardMaterial color="#0e1a12" roughness={0.96} />
         </instancedMesh>
       ))}
     </group>

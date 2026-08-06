@@ -1,9 +1,21 @@
 "use client";
 
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import type { MeshBasicMaterial } from "three";
 import { MeshReflectorMaterial } from "@react-three/drei";
-import { asphalt, concrete, grass, planks, radialFade, type Surface } from "@/lib/park/textures";
+import {
+  asphalt,
+  concrete,
+  grass,
+  outfieldFade,
+  planks,
+  radialFade,
+  type Surface,
+} from "@/lib/park/textures";
 import { PARK, ZONES } from "@/lib/park/layout";
 import { MAP_SPAN, parkMap } from "@/lib/park/parkMap";
+import { useParkCtx } from "./ParkContext";
 import { useQuality } from "./Quality";
 
 /**
@@ -17,7 +29,7 @@ import { useQuality } from "./Quality";
  */
 
 const SURFACES: Record<string, () => Surface> = {
-  asphalt: () => asphalt(90),
+  asphalt: () => asphalt(300),
   concrete: () => concrete(9),
   grass: () => grass(52),
   planks: () => planks(7),
@@ -55,7 +67,14 @@ function Patch({ zone }: { zone: (typeof ZONES)[keyof typeof ZONES] }) {
 
 export function Ground() {
   const q = useQuality();
-  const tar = asphalt(90);
+  const tar = asphalt(300);
+  const outfield = useRef<MeshBasicMaterial>(null);
+  const { sky } = useParkCtx();
+
+  // the far ground takes the sky's own horizon colour, so the fade is invisible
+  useFrame(() => {
+    if (outfield.current) outfield.current.color.copy(sky.current.fog);
+  });
   const size = PARK.extent * 2;
 
   return (
@@ -92,6 +111,21 @@ export function Ground() {
       {Object.values(ZONES).map((z) => (
         <Patch key={z.id} zone={z} />
       ))}
+
+      {/* Everything past the park's edge sinks into the haze. Open ground a
+          kilometre out has nothing to say, and asking a tiled surface to hold
+          up at that range is what produces the repeating swell. */}
+      <mesh position={[0, 0.16, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={3}>
+        <planeGeometry args={[size, size]} />
+        <meshBasicMaterial
+          ref={outfield}
+          color="#0a0b16"
+          alphaMap={outfieldFade()}
+          transparent
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
 
       {/* The park's own surface: one sheet, stretched once, never repeating —
           walkways, pads and macro wear laid over the tiled tarmac. This is what

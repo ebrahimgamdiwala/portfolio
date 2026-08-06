@@ -26,7 +26,6 @@ const HEIGHTS: Record<string, number> = {
   ferrisWheel: 54,
   machineHall: 22,
   mainStage: 20,
-  signalTower: 40,
   scoreboard: 24,
   stall: 6,
   plinth: 8,

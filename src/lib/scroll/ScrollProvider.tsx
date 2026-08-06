@@ -23,6 +23,9 @@ interface ScrollApi {
   /** How many complete laps of the circuit the rider has done. */
   laps: React.MutableRefObject<number>;
   scrollTo: (p: number) => void;
+  /** Hand the wheel back to the page — explore mode needs it. */
+  stop: () => void;
+  start: () => void;
   ready: boolean;
 }
 
@@ -135,9 +138,12 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
     lenis.scrollTo(p * limit, { duration: 2.4, easing: (t) => 1 - Math.pow(1 - t, 4) });
   }, []);
 
+  const stop = useCallback(() => lenisRef.current?.stop(), []);
+  const start = useCallback(() => lenisRef.current?.start(), []);
+
   const api = useMemo<ScrollApi>(
-    () => ({ progress, eased, velocity, laps, scrollTo, ready }),
-    [scrollTo, ready],
+    () => ({ progress, eased, velocity, laps, scrollTo, stop, start, ready }),
+    [scrollTo, stop, start, ready],
   );
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

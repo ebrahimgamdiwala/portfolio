@@ -27,6 +27,9 @@
     "gateMotto": "ALL RIDES · ONE TICKET",
     "seed": 7,
 
+    "$comment_splash": "The stretch where the coaster dives into a water flume. Positioned relative to a station anchor along the circuit, in arc-length fraction.",
+    "splash": { "station": "experience", "offset": 0.016, "length": 0.019 },
+
     "$comment_sky": "Dusk -> night, keyed on ride progress (0 = the ride begins, 1 = the lap closes). `elev` is the sun's elevation in degrees; once it goes negative the park's neon carries the frame. The lap wrap resets progress, so every lap opens at golden hour again.",
     "sky": [
       { "at": 0.0,  "sun": "#ff9d4a", "sky": "#3a5488", "haze": "#ff8a4c", "fog": "#4a4160", "elev": 7,   "azim": 128, "sunI": 3.1, "ambI": 0.62, "stars": 0.0,  "neon": 0.15, "exposure": 1.02 },
@@ -245,15 +248,7 @@
             "End-to-end Meta Ads optimisation pipeline — Shopify/e-commerce scraping, LLM ad-copy generation and performance analytics.",
             "AI-driven targeting and creative optimisation, lifting conversion rates ~20–35% and campaign revenue."
           ],
-          "tags": ["MongoDB", "Firebase", "Gemini", "OpenAI", "AWS EC2", "S3", "Secrets Manager"],
-          "attraction": "signalTower",
-          "poster": {
-            "kicker": "BROADCASTING NIGHTLY",
-            "headline": "DIGIKENDR",
-            "ride": "THE SIGNAL TOWER",
-            "sub": "META ADS PIPELINE · LLM COPY",
-            "stat": "+35%"
-          }
+          "tags": ["MongoDB", "Firebase", "Gemini", "OpenAI", "AWS EC2", "S3", "Secrets Manager"]
         }
       ]
     },

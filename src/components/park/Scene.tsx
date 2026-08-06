@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { FogExp2, type AmbientLight, type DirectionalLight, type HemisphereLight } from "three";
+import { park } from "@/lib/content";
+import { useExplore } from "@/lib/explore/store";
 import { useScroll } from "@/lib/scroll/ScrollProvider";
 import type { ParkWorld } from "@/lib/usePark";
 import { EnvRig } from "@/lib/park/env";
@@ -12,10 +14,13 @@ import { makeSkyState, sampleSky } from "@/lib/park/sky";
 import { applyAnisotropy } from "@/lib/park/textures";
 import { ParkProvider } from "./ParkContext";
 import { RideCamera } from "./RideCamera";
+import { ExploreCamera } from "./ExploreCamera";
+import { Markers } from "./Markers";
 import { Sky } from "./Sky";
 import { Ground } from "./Ground";
 import { Distance } from "./Distance";
 import { Coaster } from "./Coaster";
+import { SplashTunnel } from "./SplashTunnel";
 import { Train } from "./Train";
 import { Hoardings } from "./Hoardings";
 import { Attractions } from "./Attractions";
@@ -40,6 +45,7 @@ export function Scene({ world }: { world: ParkWorld }) {
   const { eased } = useScroll();
   const { gl, scene } = useThree();
   const q = useQuality();
+  const { mode } = useExplore();
 
   const ride = useRef(makeRideState());
   const sky = useRef(makeSkyState());
@@ -113,7 +119,17 @@ export function Scene({ world }: { world: ParkWorld }) {
 
   return (
     <ParkProvider value={ctx}>
-      <RideCamera coaster={coaster} progressToTau={progressToTau} ride={ride} />
+      {/* Exactly one of these drives the camera. RideCamera stays mounted while
+          exploring because it is also what keeps `ride` — and therefore the
+          train — up to date; it simply stops touching the lens. */}
+      <RideCamera
+        coaster={coaster}
+        progressToTau={progressToTau}
+        ride={ride}
+        driving={mode === "ride"}
+      />
+      {mode === "explore" && <ExploreCamera />}
+      <Markers />
 
       <hemisphereLight ref={hemi} intensity={0.5} />
       <ambientLight ref={spill} color="#ffb98a" intensity={0.2} />
@@ -138,6 +154,11 @@ export function Scene({ world }: { world: ParkWorld }) {
       <Distance />
 
       <Coaster coaster={coaster} />
+      <SplashTunnel
+        coaster={coaster}
+        from={(coaster.stationU[park.splash.station] ?? 0.6) + park.splash.offset}
+        length={park.splash.length}
+      />
       <Train coaster={coaster} ride={ride} />
 
       <Structures coaster={coaster} />

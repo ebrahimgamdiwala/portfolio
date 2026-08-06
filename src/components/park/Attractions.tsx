@@ -14,6 +14,7 @@ import {
   type MeshBasicMaterial,
 } from "three";
 import { posterOf, stations, type AttractionKind, type StationItem } from "@/lib/content";
+import { explore, seats } from "@/lib/explore/store";
 import { beam, box, placer } from "@/lib/park/build";
 import type { Piece } from "@/lib/park/coaster";
 import { SLOTS, type Slot } from "@/lib/park/layout";
@@ -257,6 +258,11 @@ function FerrisWheel({ slot, accent, item }: { slot: Slot; accent: string; item:
       vec.y -= 3.0;
       mtx.compose(vec, qut, scl);
       cabins.current?.setMatrixAt(i, mtx);
+      // gondola zero is the one you get into
+      if (i === 0) {
+        seats.ferrisWheel.pos.copy(vec);
+        seats.ferrisWheel.yaw = yaw + Math.PI / 2;
+      }
       // the roof lights chase around the rim
       const lit = 0.55 + 0.45 * Math.sin(pulse + i * 0.7);
       scl.setScalar(0.8 + lit * 0.5);
@@ -325,8 +331,18 @@ function DropTower({ slot, accent, item }: { slot: Slot; accent: string; item: S
   const structure = useMemo(() => mast(TOWER_H, 6.5, 3.4, 22), []);
   const poster = posterOf(item, stations[0]);
 
+  const boarded = useRef(-1);
+
   useFrame((state) => {
-    const t = state.clock.elapsedTime % 15;
+    // Boarding restarts the cycle from the bottom. Strapping somebody in and
+    // then making them wait nine seconds for the haul to come back down is not
+    // a ride, it is a queue.
+    const riding = explore.state.riding === "dropTower";
+    if (riding && boarded.current < 0) boarded.current = state.clock.elapsedTime;
+    if (!riding) boarded.current = -1;
+
+    const clock = riding ? state.clock.elapsedTime - boarded.current : state.clock.elapsedTime;
+    const t = clock % 15;
     let y: number;
     if (t < 9) {
       // hauled up, easing out at the top
@@ -345,6 +361,9 @@ function DropTower({ slot, accent, item }: { slot: Slot; accent: string; item: S
     if (beacon.current) {
       beacon.current.opacity = Math.sin(state.clock.elapsedTime * 3) > 0 ? 1 : 0.05;
     }
+    // publish the seat for ExploreCamera to strap into
+    seats.dropTower.pos.set(slot.x, y + 8, slot.z);
+    seats.dropTower.yaw = slot.rot;
   });
 
   return (
@@ -406,8 +425,12 @@ function DropTower({ slot, accent, item }: { slot: Slot; accent: string; item: S
 
 function Gear({ radius, teeth, speed, color }: { radius: number; teeth: number; speed: number; color: string }) {
   const ref = useRef<Group>(null);
+  const boost = useRef(1);
   useFrame((_, dt) => {
-    if (ref.current) ref.current.rotation.z += dt * speed;
+    // throwing the switch on the machine hall winds everything up
+    const want = explore.state.selected?.includes("OneFlow") ? 4.5 : 1;
+    boost.current += (want - boost.current) * Math.min(1, dt * 1.4);
+    if (ref.current) ref.current.rotation.z += dt * speed * boost.current;
   });
   return (
     <group ref={ref}>
@@ -552,8 +575,11 @@ function MainStage({ slot, accent, item }: { slot: Slot; accent: string; item: S
 
   useFrame((state) => {
     if (!bars.current) return;
-    // the lighting rig sweeps, like a stage between acts
-    bars.current.rotation.x = -0.6 + Math.sin(state.clock.elapsedTime * 0.7) * 0.28;
+    // the rig idles between acts and works properly once there is an audience
+    const live = explore.state.selected?.includes("Frappe") ? 3.4 : 1;
+    const t = state.clock.elapsedTime;
+    bars.current.rotation.x = -0.6 + Math.sin(t * 0.7 * live) * 0.28 * live;
+    bars.current.rotation.z = Math.sin(t * 0.43 * live) * 0.18 * (live - 0.6);
   });
 
   return (
@@ -620,64 +646,6 @@ function MainStage({ slot, accent, item }: { slot: Slot; accent: string; item: S
   );
 }
 
-/* ── the signal tower ─────────────────────────────────────────────────────── */
-
-function SignalTower({ slot, accent, item }: { slot: Slot; accent: string; item: StationItem }) {
-  const poster = posterOf(item, stations[0]);
-  const HGT = 74;
-  const dish = useRef<Group>(null);
-  const structure = useMemo(() => mast(HGT, 4.6, 1.8, 16), []);
-  const rings = useRef<(MeshBasicMaterial | null)[]>([]);
-
-  useFrame((state, dt) => {
-    if (dish.current) dish.current.rotation.y += dt * 0.55;
-    const t = state.clock.elapsedTime;
-    // pulses travelling up the mast, like a broadcast
-    rings.current.forEach((m, i) => {
-      if (m) m.opacity = Math.max(0, Math.sin(t * 1.6 - i * 0.55)) ** 3;
-    });
-  });
-
-  return (
-    <group position={[slot.x, 0, slot.z]} rotation={[0, slot.rot, 0]}>
-      <Frame pieces={structure} color="#4b5160" />
-
-      {Array.from({ length: 7 }, (_, i) => (
-        <mesh key={i} position={[0, 10 + i * 9, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[4.2 - i * 0.32, 0.26, 6, 24]} />
-          <meshBasicMaterial
-            ref={(m) => void (rings.current[i] = m)}
-            color={accent}
-            transparent
-            opacity={0}
-            toneMapped={false}
-          />
-        </mesh>
-      ))}
-
-      <group ref={dish} position={[0, HGT + 2, 0]}>
-        <mesh rotation={[-0.5, 0, 0]} castShadow>
-          <sphereGeometry args={[5.5, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2.6]} />
-          <meshStandardMaterial color="#d6dae2" roughness={0.35} metalness={0.7} side={DoubleSide} />
-        </mesh>
-        <mesh position={[0, 2.6, 1.4]}>
-          <sphereGeometry args={[0.8, 10, 8]} />
-          <meshBasicMaterial color={accent} toneMapped={false} />
-        </mesh>
-      </group>
-
-      <Panel
-        headline={poster.headline}
-        sub={poster.stat}
-        accent={accent}
-        width={20}
-        height={7}
-        position={[0, 20, 5]}
-      />
-    </group>
-  );
-}
-
 /* ── the scoreboard ───────────────────────────────────────────────────────── */
 
 function Scoreboard({ slot, accent, item }: { slot: Slot; accent: string; item: StationItem }) {
@@ -726,7 +694,6 @@ const BUILDERS: Partial<
   dropTower: DropTower,
   machineHall: MachineHall,
   mainStage: MainStage,
-  signalTower: SignalTower,
   scoreboard: Scoreboard,
 };
 

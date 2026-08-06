@@ -62,10 +62,13 @@ export function RideCamera({
   coaster,
   progressToTau,
   ride,
+  driving,
 }: {
   coaster: CoasterData;
   progressToTau: (p: number) => number;
   ride: MutableRefObject<RideState>;
+  /** False while explore mode owns the camera. */
+  driving: boolean;
 }) {
   const { camera, size } = useThree();
   const { eased } = useScroll();
@@ -185,6 +188,9 @@ export function RideCamera({
     r.blend = blend;
     r.pos.copy(carPos);
     r.quat.copy(carQuat);
+
+    // the train still needs driving even when somebody else has the lens
+    if (!driving) return;
 
     /* ── which shot ────────────────────────────────────────────────────── */
 

@@ -27,7 +27,6 @@ export type AttractionKind =
   | "ferrisWheel"
   | "machineHall"
   | "mainStage"
-  | "signalTower"
   | "scoreboard"
   | "stall"
   | "plinth";
@@ -68,11 +67,19 @@ export interface SkyKey {
   exposure: number;
 }
 
+/** Where the coaster dives into the water flume, relative to a station anchor. */
+export interface Splash {
+  station: string;
+  offset: number;
+  length: number;
+}
+
 export interface Park {
   name: string;
   est: string;
   gateMotto: string;
   seed: number;
+  splash: Splash;
   sky: SkyKey[];
 }
 
@@ -225,9 +232,17 @@ export function posterOf(item: StationItem, station: Station): Poster {
   };
 }
 
-/** Items that should get a full-size roadside hoarding. */
+/**
+ * Items that get a full-size roadside hoarding.
+ *
+ * Requires an explicit `poster`, which is how an entry opts out of the 3D park
+ * entirely: drop `poster` and `attraction` from an item and it lives in the
+ * copy overlay only, with nothing built for it in the world.
+ */
 export function hoardingItems(station: Station) {
-  return station.items.filter((i) => i.attraction !== "stall" && i.attraction !== "plinth");
+  return station.items.filter(
+    (i) => i.poster && i.attraction !== "stall" && i.attraction !== "plinth",
+  );
 }
 
 /** Scroll position that best frames a station's copy. */

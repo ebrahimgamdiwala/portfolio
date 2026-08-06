@@ -62,7 +62,8 @@ Each station owns a slice of the scroll timeline and a zone of the park:
 `poster` and one is derived from the item's own title and subtitle.
 
 **`attraction`** picks the structure: `dropTower`, `ferrisWheel`, `machineHall`, `mainStage`,
-`signalTower`, `scoreboard`, `stall`, `plinth`. Positions come from `SLOTS` in
+`scoreboard`, `stall`, `plinth`. Omit both `attraction` and `poster` and the item
+lives in the copy overlay only, with nothing built for it in the world. Positions come from `SLOTS` in
 `src/lib/park/layout.ts`, consumed in JSON order.
 
 **`shots`** is the camera cut list for that station, spread evenly across its slice:
@@ -75,6 +76,24 @@ Each station owns a slice of the scroll timeline and a zone of the park:
 | `drone` | high and ahead, looking back as the train comes on |
 | `crane` | a fixed camera by the rails that the train sweeps past |
 
+## Explore mode
+
+Finish a lap and the park opens. An invitation appears; taking it swaps the
+scroll-driven ride for a camera you walk yourself — WASD to move, drag to look,
+shift to run.
+
+Scattered across the park are markers, one per attraction, generated from the same
+JSON. Clicking one flies the camera to it and opens a card with that item's real
+detail. The drop tower and the big wheel are **boardable**: the camera straps into
+the actual moving car, and boarding the tower restarts its cycle from the bottom
+so you never queue. Throwing the switch at the machine hall winds its gears up;
+the main stage brings its lighting rig to life. The gate is the guest book.
+
+Marker copy, framing and which rides can be boarded live in
+`src/lib/explore/markers.ts`; the mode itself is a small external store in
+`src/lib/explore/store.ts` — external rather than React context because the
+overlay and the markers sit in two different reconcilers.
+
 ## How it works
 
 | What | Where |
@@ -83,6 +102,8 @@ Each station owns a slice of the scroll timeline and a zone of the park:
 | Coaster spline, speed and banking | `src/lib/park/coaster.ts` |
 | Hoarding placement off the rails | `src/lib/park/signage.ts` |
 | Poster artwork | `src/lib/park/poster.ts` |
+| Splash run placement | `park.splash` in `src/data/park.json` |
+| Explore markers and activities | `src/lib/explore/markers.ts` |
 | Ground surface map (paths, pads, wear) | `src/lib/park/parkMap.ts` |
 | Procedural materials | `src/lib/park/textures.ts` |
 | Dusk → night keyframes | `src/lib/park/sky.ts` |

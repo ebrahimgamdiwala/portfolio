@@ -1,7 +1,9 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import {
+  BackSide,
   BufferAttribute,
   BufferGeometry,
   DoubleSide,
@@ -10,8 +12,11 @@ import {
   Quaternion,
   Vector3,
   type InstancedMesh,
+  type MeshBasicMaterial,
 } from "three";
 import { fbm, makeNoise2D, Rng } from "@/lib/park/rand";
+import { verticalFade } from "@/lib/park/textures";
+import { useParkCtx } from "./ParkContext";
 
 /**
  * What is beyond the fence.
@@ -30,22 +35,44 @@ import { fbm, makeNoise2D, Rng } from "@/lib/park/rand";
  * rides a noise field, skirted down below the ground so no gap can open under
  * it however low the camera gets.
  */
-function ridge(radius: number, height: number, seed: number, segments = 220) {
+function ridge(radius: number, height: number, seed: number, segments = 520) {
   const n = makeNoise2D(seed);
   const verts = new Float32Array(segments * 2 * 3);
   const norms = new Float32Array(segments * 2 * 3);
+  const cols = new Float32Array(segments * 2 * 3);
+
+  // sampled first so neighbouring peaks can be smoothed against each other
+  const hs = new Float32Array(segments);
+  const rs = new Float32Array(segments);
+  for (let i = 0; i < segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    const cx = Math.cos(a);
+    const cz = Math.sin(a);
+    // broad massifs with a gentler ripple on top; the old high-frequency
+    // octave was what made the range read as a row of cardboard triangles
+    hs[i] =
+      height *
+      (0.4 + fbm(n, cx * 1.9 + 5, cz * 1.9, 4) * 0.85) *
+      (0.78 + fbm(n, cx * 4.4, cz * 4.4, 2) * 0.42);
+    // wobble the radius too, so it is not a perfect circle
+    rs[i] = radius * (0.9 + fbm(n, cx * 1.4, cz * 1.4, 2) * 0.24);
+  }
+  // three smoothing passes, wrapped — a distant range has no hard corners
+  for (let pass = 0; pass < 3; pass++) {
+    const src = hs.slice();
+    for (let i = 0; i < segments; i++) {
+      const a = src[(i - 1 + segments) % segments];
+      const b = src[(i + 1) % segments];
+      hs[i] = (a + src[i] * 2 + b) / 4;
+    }
+  }
 
   for (let i = 0; i < segments; i++) {
     const a = (i / segments) * Math.PI * 2;
     const cx = Math.cos(a);
     const cz = Math.sin(a);
-    // two octaves: broad massifs with peaks riding on top
-    const h =
-      height *
-      (0.35 + fbm(n, cx * 2.6 + 5, cz * 2.6, 4) * 0.9) *
-      (0.6 + fbm(n, cx * 9, cz * 9, 2) * 0.8);
-    // wobble the radius too, so the range does not read as a perfect circle
-    const r = radius * (0.9 + fbm(n, cx * 1.7, cz * 1.7, 2) * 0.24);
+    const h = hs[i];
+    const r = rs[i];
 
     const v = i * 6;
     verts[v] = cx * r;
@@ -58,6 +85,18 @@ function ridge(radius: number, height: number, seed: number, segments = 220) {
     norms[v + 2] = -cz;
     norms[v + 3] = -cx;
     norms[v + 5] = -cz;
+
+    // Vertex colours run dark at the base and pale at the summit, so the tops
+    // dissolve into the sky instead of stamping a hard silhouette on it. This
+    // is the whole trick — real distant ranges lose contrast with altitude.
+    cols[v] = 1;
+    cols[v + 1] = 1;
+    cols[v + 2] = 1;
+    const fadeUp = Math.min(1, h / (height * 0.95));
+    const pale = 1 + fadeUp * 2.6;
+    cols[v + 3] = pale;
+    cols[v + 4] = pale;
+    cols[v + 5] = pale;
   }
 
   const idx = new Uint32Array(segments * 6);
@@ -70,6 +109,7 @@ function ridge(radius: number, height: number, seed: number, segments = 220) {
   const g = new BufferGeometry();
   g.setAttribute("position", new BufferAttribute(verts, 3));
   g.setAttribute("normal", new BufferAttribute(norms, 3));
+  g.setAttribute("color", new BufferAttribute(cols, 3));
   g.setIndex(new BufferAttribute(idx, 1));
   g.computeBoundingSphere();
   return g;
@@ -150,19 +190,68 @@ function City() {
   );
 }
 
+/**
+ * Haze banks sitting in front of each range. Real distance is not a silhouette
+ * against a sky, it is layer after layer of air — this is what stops the ridges
+ * looking like scenery flats.
+ */
+function Haze({ radius, height, opacity }: { radius: number; height: number; opacity: number }) {
+  const { sky } = useParkCtx();
+  const mat = useRef<MeshBasicMaterial>(null);
+
+  useFrame(() => {
+    if (!mat.current) return;
+    // the band takes the sky's own horizon colour, so it can never disagree
+    // with what the dome is painting behind it
+    mat.current.color.copy(sky.current.haze).lerp(sky.current.fog, 0.45);
+    mat.current.opacity = opacity;
+  });
+
+  return (
+    <mesh position={[0, height * 0.3, 0]} frustumCulled={false} renderOrder={-6}>
+      <cylinderGeometry args={[radius, radius, height, 96, 1, true]} />
+      {/* ramped, not a flat band — a hard top edge on a haze layer is worse
+          than no haze layer at all */}
+      <meshBasicMaterial
+        ref={mat}
+        alphaMap={verticalFade()}
+        transparent
+        opacity={opacity}
+        depthWrite={false}
+        side={BackSide}
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
+/**
+ * Three ranges, brought in close and made tall enough to actually sit on the
+ * skyline. A distant range that only occupies four pixels of horizon might as
+ * well not be modelled — the park should feel like it is somewhere.
+ */
 export function Distance() {
-  const near = useMemo(() => ridge(1500, 150, 4021), []);
-  const far = useMemo(() => ridge(2150, 260, 9137), []);
+  const near = useMemo(() => ridge(1080, 300, 4021), []);
+  const mid = useMemo(() => ridge(1520, 400, 5563), []);
+  const far = useMemo(() => ridge(2000, 520, 9137), []);
 
   return (
     <group>
-      <mesh geometry={far} frustumCulled={false} renderOrder={-8}>
-        <meshStandardMaterial color="#0d1024" roughness={1} side={DoubleSide} />
+      <mesh geometry={far} frustumCulled={false} renderOrder={-9}>
+        <meshBasicMaterial color="#1b2040" vertexColors side={DoubleSide} toneMapped={false} />
+      </mesh>
+      <Haze radius={1880} height={520} opacity={0.55} />
+
+      <mesh geometry={mid} frustumCulled={false} renderOrder={-8}>
+        <meshBasicMaterial color="#141834" vertexColors side={DoubleSide} toneMapped={false} />
       </mesh>
       <City />
+      <Haze radius={1420} height={400} opacity={0.45} />
+
       <mesh geometry={near} frustumCulled={false} renderOrder={-7}>
-        <meshStandardMaterial color="#090b18" roughness={1} side={DoubleSide} />
+        <meshBasicMaterial color="#0d1024" vertexColors side={DoubleSide} toneMapped={false} />
       </mesh>
+      <Haze radius={1010} height={300} opacity={0.34} />
     </group>
   );
 }

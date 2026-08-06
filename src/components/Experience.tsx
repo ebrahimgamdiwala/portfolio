@@ -7,6 +7,8 @@ import { Navbar } from "./ui/Navbar";
 import { Hero } from "./ui/Hero";
 import { StationLayer } from "./ui/StationLayer";
 import { Loader } from "./ui/Loader";
+import { ExploreLayer } from "./ui/ExploreLayer";
+import { useExplore } from "@/lib/explore/store";
 
 const ParkCanvas = dynamic(
   () => import("./park/ParkCanvas").then((m) => m.ParkCanvas),
@@ -18,13 +20,16 @@ const SCROLL_VH = 1300;
 
 function Stage() {
   const world = usePark();
+  const { mode } = useExplore();
+  const riding = mode === "ride";
 
   return (
     <>
       <ParkCanvas world={world} />
-      <Navbar />
-      <Hero />
-      <StationLayer />
+      {riding && <Navbar />}
+      {riding && <Hero />}
+      {riding && <StationLayer />}
+      <ExploreLayer />
       <Loader ready={!!world} />
       <div style={{ height: `${SCROLL_VH}vh` }} aria-hidden />
     </>
