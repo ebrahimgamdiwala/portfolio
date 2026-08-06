@@ -79,12 +79,14 @@ lives in the copy overlay only, with nothing built for it in the world. Position
 ## Explore mode
 
 Finish a lap and the park opens. An invitation appears; taking it swaps the
-scroll-driven ride for a camera you walk yourself — WASD to move, drag to look,
-shift to run.
+scroll-driven ride for first-person controls — click once to capture the mouse,
+then WASD to walk, mouse to look, shift to run, M for the map, escape to let go.
+You cannot walk through the rides or past the fence.
 
-Scattered across the park are markers, one per attraction, generated from the same
-JSON. Clicking one flies the camera to it and opens a card with that item's real
-detail. The drop tower and the big wheel are **boardable**: the camera straps into
+Markers stand over every attraction, generated from the same JSON. Aim the
+crosshair at one and click: the camera flies to it and a card opens with that
+item's real detail. The minimap in the corner is drawn from the layout tables
+and the solved circuit, and clicking a ride on it selects that marker too. The drop tower and the big wheel are **boardable**: the camera straps into
 the actual moving car, and boarding the tower restarts its cycle from the bottom
 so you never queue. Throwing the switch at the machine hall winds its gears up;
 the main stage brings its lighting rig to life. The gate is the guest book.
@@ -104,6 +106,8 @@ overlay and the markers sit in two different reconcilers.
 | Poster artwork | `src/lib/park/poster.ts` |
 | Splash run placement | `park.splash` in `src/data/park.json` |
 | Explore markers and activities | `src/lib/explore/markers.ts` |
+| Walkable collision footprints | `src/lib/explore/collide.ts` |
+| Crowd geometry | `src/lib/park/human.ts` |
 | Ground surface map (paths, pads, wear) | `src/lib/park/parkMap.ts` |
 | Procedural materials | `src/lib/park/textures.ts` |
 | Dusk → night keyframes | `src/lib/park/sky.ts` |

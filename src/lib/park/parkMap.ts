@@ -102,8 +102,8 @@ export function parkMap(): Texture {
 
   /* ── the walkway network ───────────────────────────────────────────────── */
 
-  const CONCRETE = "#8b8578";
-  const CONCRETE_EDGE = "#5d584f";
+  const CONCRETE = "#57534c";
+  const CONCRETE_EDGE = "#3a3733";
 
   // the spine: the gate, the plaza, then a loop around the whole midway
   const ring: [number, number][] = [

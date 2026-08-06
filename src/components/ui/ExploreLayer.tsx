@@ -7,6 +7,7 @@ import { buildMarkers } from "@/lib/explore/markers";
 import { explore, useExplore } from "@/lib/explore/store";
 import { useScroll } from "@/lib/scroll/ScrollProvider";
 import { useRafProgress } from "@/lib/scroll/useRafProgress";
+import { ExploreMap } from "./ExploreMap";
 
 /**
  * Everything explore mode says out loud.
@@ -196,7 +197,8 @@ function Card() {
 /* ── the persistent chrome ────────────────────────────────────────────────── */
 
 function Hud() {
-  const { selected, riding } = useExplore();
+  const { selected, riding, pointerLocked, hovered } = useExplore();
+  const free = !selected && !riding;
 
   return (
     <motion.div
@@ -218,16 +220,35 @@ function Hud() {
         </button>
       </div>
 
+      {/* crosshair — the thing you aim markers with */}
+      {free && pointerLocked && (
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div
+            className="rounded-full border transition-all duration-200"
+            style={{
+              width: hovered ? 18 : 7,
+              height: hovered ? 18 : 7,
+              borderColor: hovered ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.5)",
+              borderWidth: hovered ? 2 : 1.5,
+            }}
+          />
+        </div>
+      )}
+
       <AnimatePresence>
-        {!selected && !riding && (
+        {free && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-x-0 bottom-0 flex justify-center px-6 pb-8"
           >
-            <span className="rounded-full border border-white/10 bg-black/45 px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest2 text-white/50 backdrop-blur-md">
-              W A S D to walk · drag to look · shift to run · click a marker
+            <span className="rounded-full border border-white/10 bg-black/50 px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest2 text-white/55 backdrop-blur-md">
+              {pointerLocked
+                ? hovered
+                  ? "Click to enter · esc to release the mouse"
+                  : "W A S D walk · mouse look · shift run · M map · esc release"
+                : "Click anywhere to take the controls"}
             </span>
           </motion.div>
         )}
@@ -254,6 +275,7 @@ export function ExploreLayer() {
       <Invitation />
       <AnimatePresence>{mode === "explore" && <Hud key="hud" />}</AnimatePresence>
       <AnimatePresence>{mode === "explore" && <Card />}</AnimatePresence>
+      <ExploreMap />
     </>
   );
 }

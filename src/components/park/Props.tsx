@@ -1,19 +1,21 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import {
   AdditiveBlending,
+  Color,
   DoubleSide,
   InstancedBufferAttribute,
   Matrix4,
-  PlaneGeometry,
   Quaternion,
   Vector3,
   type InstancedMesh,
 } from "three";
 import type { PropSet } from "@/lib/park/props";
-import { crowdSheet, paintedSteel } from "@/lib/park/textures";
+import { paintedSteel } from "@/lib/park/textures";
+import { HUMAN_HEIGHT, humanBody, humanSkin } from "@/lib/park/human";
+import { Rng } from "@/lib/park/rand";
 import { Pieces } from "./primitives/Pieces";
 import { useQuality } from "./Quality";
 
@@ -209,96 +211,121 @@ function Trees({ set }: { set: PropSet }) {
 
 /* ── the crowd ────────────────────────────────────────────────────────────── */
 
-const COLUMNS = 8;
-const TINTS = [
-  "#c9b8a8",
-  "#8a94ad",
-  "#b08f8f",
-  "#7f9c8e",
-  "#a99ac0",
-  "#c0a06e",
-  "#94a6b8",
-  "#b57f86",
+const CLOTHES = [
+  "#c9443f",
+  "#2f5fa8",
+  "#e0b23c",
+  "#3c8f6a",
+  "#8858b8",
+  "#d97a2b",
+  "#c8c3ba",
+  "#2b3140",
+  "#a63b6d",
+  "#4a8fb5",
 ];
+const SKIN = ["#e8bd97", "#d4a179", "#b3835c", "#8d6142", "#6b452c", "#f0cdaa"];
 
 /**
- * Impostors: one plane per person, turned to face the camera. The silhouette
- * sheet has eight builds in it, so the crowd is split into eight instanced
- * meshes — one per column — rather than one mesh of identical clones.
+ * The crowd: actual bodies, instanced.
+ *
+ * Two draws for four hundred people — one for clothes, one for skin — so each
+ * person can have their own shirt and complexion without a third of the frame
+ * budget going on them. A quarter of them wander their zone; the rest stand
+ * about, shifting their weight, which is what people at a funfair mostly do.
  */
 function Crowd({ set }: { set: PropSet }) {
   const q = useQuality();
-  const { camera } = useThree();
-  const meshes = useRef<(InstancedMesh | null)[]>([]);
-  const sheet = useMemo(() => crowdSheet(), []);
+  const bodies = useRef<InstancedMesh>(null);
+  const skins = useRef<InstancedMesh>(null);
 
-  const groups = useMemo(() => {
+  const people = useMemo(() => {
     const total = Math.floor((set.crowd.length / 4) * q.crowd);
-    const buckets: number[][] = Array.from({ length: COLUMNS }, () => []);
-    for (let i = 0; i < total; i++) buckets[i % COLUMNS].push(i);
-    return buckets;
+    const rng = new Rng(31337);
+    return Array.from({ length: total }, (_, i) => ({
+      x: set.crowd[i * 4],
+      z: set.crowd[i * 4 + 1],
+      /** 1.55–1.92 m, applied as a scale on a 1.75 m figure. */
+      h: set.crowd[i * 4 + 2] / HUMAN_HEIGHT,
+      phase: set.crowd[i * 4 + 3],
+      // a quarter of them are going somewhere
+      walks: rng.chance(0.26),
+      radius: rng.range(4, 16),
+      speed: rng.range(0.09, 0.26) * rng.sign(),
+      facing: rng.range(0, Math.PI * 2),
+      cloth: CLOTHES[rng.int(CLOTHES.length)],
+      skin: SKIN[rng.int(SKIN.length)],
+    }));
   }, [set, q.crowd]);
 
-  // one geometry per column of the sheet, UVs remapped
-  const geometries = useMemo(
-    () =>
-      Array.from({ length: COLUMNS }, (_, c) => {
-        const g = new PlaneGeometry(1, 1);
-        const uv = g.attributes.uv;
-        for (let i = 0; i < uv.count; i++) {
-          uv.setX(i, (c + uv.getX(i)) / COLUMNS);
-        }
-        uv.needsUpdate = true;
-        return g;
-      }),
-    [],
-  );
+  useLayoutEffect(() => {
+    const cloth = new Float32Array(people.length * 3);
+    const flesh = new Float32Array(people.length * 3);
+    const c = new Color();
+    people.forEach((p, i) => {
+      c.set(p.cloth).toArray(cloth, i * 3);
+      c.set(p.skin).toArray(flesh, i * 3);
+    });
+    if (bodies.current) {
+      bodies.current.instanceColor = new InstancedBufferAttribute(cloth, 3);
+      bodies.current.instanceColor.needsUpdate = true;
+    }
+    if (skins.current) {
+      skins.current.instanceColor = new InstancedBufferAttribute(flesh, 3);
+      skins.current.instanceColor.needsUpdate = true;
+    }
+  }, [people]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
+    for (let i = 0; i < people.length; i++) {
+      const p = people[i];
+      let x = p.x;
+      let z = p.z;
+      let face = p.facing;
 
-    groups.forEach((idxs, c) => {
-      const mesh = meshes.current[c];
-      if (!mesh) return;
-      for (let k = 0; k < idxs.length; k++) {
-        const i = idxs[k];
-        const x = set.crowd[i * 4];
-        const z = set.crowd[i * 4 + 1];
-        const h = set.crowd[i * 4 + 2];
-        const phase = set.crowd[i * 4 + 3];
-        q4.setFromAxisAngle(UP, Math.atan2(camera.position.x - x, camera.position.z - z));
-        // a slight sway so the crowd is not a field of statues
-        const sway = Math.sin(t * 1.1 + phase) * 0.035;
-        scale.set(h * 0.46, h, 1);
-        v3.set(x, h * 0.5 + sway, z);
-        mesh.setMatrixAt(k, m4.compose(v3, q4, scale));
+      if (p.walks) {
+        // a slow loop around where they started, facing the way they are going
+        const a = p.phase + t * p.speed;
+        x += Math.cos(a) * p.radius;
+        z += Math.sin(a) * p.radius;
+        face = -a + (p.speed > 0 ? -Math.PI / 2 : Math.PI / 2);
       }
-      mesh.instanceMatrix.needsUpdate = true;
-    });
+
+      // walkers bob on their stride; standers shift their weight
+      const bob = p.walks
+        ? Math.abs(Math.sin(t * 3.1 + p.phase)) * 0.035
+        : Math.sin(t * 0.9 + p.phase) * 0.012;
+      const lean = p.walks ? 0 : Math.sin(t * 0.55 + p.phase) * 0.02;
+
+      q4.setFromAxisAngle(UP, face + lean);
+      v3.set(x, bob, z);
+      scale.setScalar(p.h);
+      m4.compose(v3, q4, scale);
+      bodies.current?.setMatrixAt(i, m4);
+      skins.current?.setMatrixAt(i, m4);
+    }
+    if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true;
+    if (skins.current) skins.current.instanceMatrix.needsUpdate = true;
   });
+
+  if (!people.length) return null;
 
   return (
     <group>
-      {groups.map((idxs, c) =>
-        idxs.length ? (
-          <instancedMesh
-            key={c}
-            ref={(el) => void (meshes.current[c] = el)}
-            args={[geometries[c], undefined, idxs.length]}
-            frustumCulled={false}
-            castShadow={false}
-          >
-            <meshStandardMaterial
-              map={sheet}
-              color={TINTS[c]}
-              transparent
-              alphaTest={0.5}
-              roughness={0.9}
-              side={DoubleSide}
-            />
-          </instancedMesh>
-        ) : null,
-      )}
+      <instancedMesh
+        ref={bodies}
+        args={[humanBody(), undefined, people.length]}
+        frustumCulled={false}
+      >
+        <meshStandardMaterial roughness={0.82} />
+      </instancedMesh>
+      <instancedMesh
+        ref={skins}
+        args={[humanSkin(), undefined, people.length]}
+        frustumCulled={false}
+      >
+        <meshStandardMaterial roughness={0.66} />
+      </instancedMesh>
     </group>
   );
 }

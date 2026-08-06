@@ -22,6 +22,10 @@ export interface ExploreState {
   selected: string | null;
   /** Attraction the camera is actually strapped into, if any. */
   riding: string | null;
+  /** Mouse is captured — FPS look is live. */
+  pointerLocked: boolean;
+  /** Marker the crosshair is currently on, if any. */
+  hovered: string | null;
 }
 
 let state: ExploreState = {
@@ -29,6 +33,8 @@ let state: ExploreState = {
   unlocked: false,
   selected: null,
   riding: null,
+  pointerLocked: false,
+  hovered: null,
 };
 
 const listeners = new Set<() => void>();
@@ -56,10 +62,17 @@ export const explore = {
   unlock: () => {
     if (!state.unlocked) set({ unlocked: true });
   },
-  enter: () => set({ mode: "explore", selected: null, riding: null }),
-  leave: () => set({ mode: "ride", selected: null, riding: null }),
+  enter: () => set({ mode: "explore", selected: null, riding: null, hovered: null }),
+  leave: () =>
+    set({ mode: "ride", selected: null, riding: null, hovered: null, pointerLocked: false }),
   select: (id: string | null) => set({ selected: id, riding: null }),
   ride: (id: string | null) => set({ riding: id }),
+  setLocked: (v: boolean) => {
+    if (state.pointerLocked !== v) set({ pointerLocked: v });
+  },
+  hover: (id: string | null) => {
+    if (state.hovered !== id) set({ hovered: id });
+  },
 };
 
 /**
