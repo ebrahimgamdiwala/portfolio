@@ -131,27 +131,70 @@ function Plinth({ item, slot, station }: { item: StationItem; slot: Slot; statio
         <meshBasicMaterial color={station.accent} toneMapped={false} />
       </mesh>
 
-      <group ref={cup} position={[0, 9.4, 0]}>
-        <mesh castShadow>
-          <sphereGeometry args={[2, 18, 14, 0, Math.PI * 2, 0, Math.PI / 1.7]} />
-          <meshPhysicalMaterial
-            color="#ffd479"
-            roughness={0.12}
-            metalness={1}
-            clearcoat={1}
-            side={DoubleSide}
-          />
+      <group ref={cup} position={[0, 9.2, 0]}>
+        {/* Tiered dark mahogany / marble base block */}
+        <mesh position={[0, -2.5, 0]} castShadow receiveShadow>
+          <boxGeometry args={[2.4, 0.8, 2.4]} />
+          <meshStandardMaterial color="#161210" roughness={0.3} metalness={0.2} />
         </mesh>
+        <mesh position={[0, -2.05, 0]} castShadow>
+          <cylinderGeometry args={[1.5, 1.7, 0.3, 24]} />
+          <meshPhysicalMaterial color="#ffcf48" roughness={0.12} metalness={0.95} clearcoat={1} />
+        </mesh>
+
+        {/* Sculpted Turned Stem */}
+        <mesh position={[0, -1.5, 0]} castShadow>
+          <cylinderGeometry args={[0.45, 0.95, 0.8, 24]} />
+          <meshPhysicalMaterial color="#ffcf48" roughness={0.12} metalness={0.95} clearcoat={1} />
+        </mesh>
+        <mesh position={[0, -0.95, 0]} castShadow>
+          <sphereGeometry args={[0.7, 20, 16]} />
+          <meshPhysicalMaterial color="#ffd700" roughness={0.1} metalness={0.98} clearcoat={1} />
+        </mesh>
+        <mesh position={[0, -0.45, 0]} castShadow>
+          <cylinderGeometry args={[1.1, 0.5, 0.5, 24]} />
+          <meshPhysicalMaterial color="#ffcf48" roughness={0.12} metalness={0.95} clearcoat={1} />
+        </mesh>
+
+        {/* Main Chalice / Cup Body */}
+        {/* Lower Bowl */}
+        <mesh position={[0, 0.1, 0]} rotation={[Math.PI, 0, 0]} castShadow>
+          <sphereGeometry args={[1.7, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshPhysicalMaterial color="#ffd700" roughness={0.1} metalness={0.98} clearcoat={1} side={DoubleSide} />
+        </mesh>
+        {/* Upper Flared Cup Wall */}
+        <mesh position={[0, 1.45, 0]} castShadow>
+          <cylinderGeometry args={[2.2, 1.7, 2.7, 28, 1, true]} />
+          <meshPhysicalMaterial color="#ffd700" roughness={0.1} metalness={0.98} clearcoat={1} side={DoubleSide} />
+        </mesh>
+        {/* Inner Solid Floor */}
+        <mesh position={[0, 0.12, 0]}>
+          <cylinderGeometry args={[1.65, 1.65, 0.08, 24]} />
+          <meshPhysicalMaterial color="#e6b800" roughness={0.2} metalness={0.9} />
+        </mesh>
+        {/* Rolled Golden Lip Rim */}
+        <mesh position={[0, 2.8, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <torusGeometry args={[2.2, 0.16, 12, 32]} />
+          <meshPhysicalMaterial color="#ffe054" roughness={0.08} metalness={1} clearcoat={1} />
+        </mesh>
+
+        {/* Sculpted Ornate Handles (Left & Right) */}
         {[-1, 1].map((sx) => (
-          <mesh key={sx} position={[sx * 1.6, 0.3, 0]} rotation={[0, 0, (-sx * Math.PI) / 2]} frustumCulled={false}>
-            <torusGeometry args={[1, 0.22, 8, 16, Math.PI]} />
-            <meshPhysicalMaterial color="#ffd479" roughness={0.14} metalness={1} clearcoat={1} />
-          </mesh>
+          <group key={sx} position={[sx * 2.1, 1.35, 0]} rotation={[0, 0, sx * -0.2]}>
+            <mesh frustumCulled={false} castShadow>
+              <torusGeometry args={[0.95, 0.18, 12, 24, Math.PI * 0.95]} />
+              <meshPhysicalMaterial color="#ffd700" roughness={0.1} metalness={0.98} clearcoat={1} />
+            </mesh>
+          </group>
         ))}
-        <mesh position={[0, -2.3, 0]}>
-          <cylinderGeometry args={[0.35, 1.1, 2, 14]} />
-          <meshPhysicalMaterial color="#ffd479" roughness={0.14} metalness={1} clearcoat={1} />
-        </mesh>
+
+        {/* Top Victory Star / Crown Finial */}
+        <group position={[0, 3.4, 0]}>
+          <mesh castShadow position={[0, 0.35, 0]} rotation={[0, 0, Math.PI / 4]}>
+            <octahedronGeometry args={[0.42, 0]} />
+            <meshPhysicalMaterial color="#ffffff" emissive="#ffea78" emissiveIntensity={0.6} roughness={0.1} metalness={0.9} />
+          </mesh>
+        </group>
       </group>
 
       <mesh position={[0, 3.9, 2.95]}>
