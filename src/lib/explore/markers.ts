@@ -1,5 +1,5 @@
 import { stations, type Station, type StationItem } from "@/lib/content";
-import { LANDMARKS, SLOTS, type Slot } from "@/lib/park/layout";
+import { FURNITURE, LANDMARKS, SLOTS, type Slot } from "@/lib/park/layout";
 
 /**
  * The things you can walk up to and do.
@@ -26,6 +26,8 @@ export interface Marker {
   accent: string;
   /** True when selecting it straps the camera into the ride. */
   boardable?: boolean;
+  /** Moving-seat key when several rides share the same kind. */
+  rideId?: string;
   item?: StationItem;
   station: Station;
 }
@@ -34,6 +36,11 @@ export interface Marker {
 const FRAMING: Record<string, { hover: number; back: number; eye: number }> = {
   dropTower: { hover: 16, back: 62, eye: 26 },
   ferrisWheel: { hover: 20, back: 96, eye: 40 },
+  carousel: { hover: 16, back: 44, eye: 15 },
+  waterSlide: { hover: 25, back: 74, eye: 28 },
+  teacups: { hover: 14, back: 36, eye: 12 },
+  swingRide: { hover: 22, back: 52, eye: 18 },
+  pirateShip: { hover: 22, back: 42, eye: 18 },
   machineHall: { hover: 30, back: 68, eye: 22 },
   mainStage: { hover: 26, back: 60, eye: 18 },
   scoreboard: { hover: 22, back: 46, eye: 16 },
@@ -50,6 +57,26 @@ const ACTIONS: Record<string, { action: string; hint: string }> = {
   ferrisWheel: {
     action: "Take a turn",
     hint: "Board a gondola. The numbers come round with you.",
+  },
+  carousel: {
+    action: "Ride a horse",
+    hint: "Pick a horse and take a spin around the midway.",
+  },
+  waterSlide: {
+    action: "Ride the slide",
+    hint: "Climb aboard and follow the flume all the way into the splash pool.",
+  },
+  teacups: {
+    action: "Spin the cups",
+    hint: "Climb into a cup and spin around the wooden deck.",
+  },
+  swingRide: {
+    action: "Fly the swings",
+    hint: "Take a chair and soar as the central column spins up.",
+  },
+  pirateShip: {
+    action: "Board the galleon",
+    hint: "Board the swinging pirate galleon as it arches high above the park.",
   },
   machineHall: {
     action: "Start the machine",
@@ -125,6 +152,39 @@ export function buildMarkers(): Marker[] {
       out.push(place(slot, kind, `${station.id}:${item.title}`, title, station, item));
     }
   }
+
+  // These are park attractions rather than portfolio entries, but they use
+  // the same marker and boarding flow as the headline rides.
+  FURNITURE.carousel.forEach((slot, i) => {
+    const marker = place(slot, "carousel", `carousel:${i}`, "CAROUSEL", stations[0]);
+    marker.boardable = true;
+    marker.rideId = `carousel${i}`;
+    out.push(marker);
+  });
+  FURNITURE.waterSlide.forEach((slot, i) => {
+    const marker = place(slot, "waterSlide", `water-slide:${i}`, "WATER SLIDES", stations[0]);
+    marker.boardable = true;
+    marker.rideId = `waterSlide${i}`;
+    out.push(marker);
+  });
+  FURNITURE.teacups.forEach((slot, i) => {
+    const marker = place(slot, "teacups", `teacups:${i}`, "CUP & SAUCER", stations[0]);
+    marker.boardable = true;
+    marker.rideId = `teacups${i}`;
+    out.push(marker);
+  });
+  FURNITURE.swingRide.forEach((slot, i) => {
+    const marker = place(slot, "swingRide", `swing-ride:${i}`, "SWING RIDE", stations[0]);
+    marker.boardable = true;
+    marker.rideId = `swingRide${i}`;
+    out.push(marker);
+  });
+  FURNITURE.pirateShip.forEach((slot, i) => {
+    const marker = place(slot, "pirateShip", `pirate-ship:${i}`, "PIRATE GALLEON", stations[0]);
+    marker.boardable = true;
+    marker.rideId = `pirateShip${i}`;
+    out.push(marker);
+  });
 
   // the way out, which is also the way to reach me
   const contact = stations.find((s) => s.id === "contact") ?? stations[stations.length - 1];

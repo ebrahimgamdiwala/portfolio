@@ -85,4 +85,13 @@ export const explore = {
 export const seats: Record<string, { pos: Vector3; yaw: number }> = {
   dropTower: { pos: new Vector3(), yaw: 0 },
   ferrisWheel: { pos: new Vector3(), yaw: 0 },
+  carousel0: { pos: new Vector3(), yaw: 0 },
+  carousel1: { pos: new Vector3(), yaw: 0 },
+  waterSlide0: { pos: new Vector3(), yaw: 0 },
+  waterSlide1: { pos: new Vector3(), yaw: 0 },
+  teacups0: { pos: new Vector3(), yaw: 0 },
+  teacups1: { pos: new Vector3(), yaw: 0 },
+  swingRide0: { pos: new Vector3(), yaw: 0 },
+  swingRide1: { pos: new Vector3(), yaw: 0 },
+  pirateShip0: { pos: new Vector3(), yaw: 0 },
 };

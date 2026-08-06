@@ -21,7 +21,7 @@ import { PARK } from "@/lib/park/layout";
  * strapped into a ride that is carrying you itself.
  */
 
-const EYE = 1.72;
+const EYE = 3.4;
 const WALK = 30;
 const RUN = 72;
 /** The fence is at PARK.fenceRadius; stop short of touching it. */
@@ -40,14 +40,16 @@ const UP = new Vector3(0, 1, 0);
 const pushed = { x: 0, z: 0 };
 
 /** Live position, read by the map overlay. Deliberately not React state. */
-export const walker = { x: 0, z: 300, yaw: 0 };
+export const walker = { x: 0, z: 180, yaw: 0 };
 
 export function ExploreCamera() {
   const { camera, gl } = useThree();
-  const { mode, selected, riding } = useExplore();
+  const mode = useExplore().mode;
+  const selected = useExplore().selected;
+  const riding = useExplore().riding;
   const markers = useMemo(() => buildMarkers(), []);
 
-  const pos = useRef(new Vector3(0, EYE, 300));
+  const pos = useRef(new Vector3(0, EYE, 180));
   const vel = useRef(new Vector3());
   const yaw = useRef(0);
   const pitch = useRef(-0.04);
@@ -65,24 +67,50 @@ export function ExploreCamera() {
 
     const isLocked = () => document.pointerLockElement === el;
 
+    const tryLock = () => {
+      try {
+        const p = (el as any).requestPointerLock?.();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      } catch (err) {}
+    };
+
+    const tryUnlock = () => {
+      try {
+        if (isLocked()) document.exitPointerLock?.();
+      } catch (err) {}
+    };
+
     const onKey = (e: KeyboardEvent, down: boolean) => {
-      keys.current[e.key.toLowerCase()] = down;
-      if (down && e.key === "Escape") explore.select(null);
-      if (down && ["w", "a", "s", "d", " "].includes(e.key.toLowerCase())) e.preventDefault();
+      const rawKey = (e.key || "").toLowerCase();
+      const codeKey = (e.code || "").toLowerCase();
+
+      keys.current[rawKey] = down;
+      keys.current[codeKey] = down;
+
+      if (rawKey === "w" || codeKey === "keyw" || rawKey === "arrowup" || codeKey === "arrowup") keys.current["w"] = down;
+      if (rawKey === "s" || codeKey === "keys" || rawKey === "arrowdown" || codeKey === "arrowdown") keys.current["s"] = down;
+      if (rawKey === "a" || codeKey === "keya" || rawKey === "arrowleft" || codeKey === "arrowleft") keys.current["a"] = down;
+      if (rawKey === "d" || codeKey === "keyd" || rawKey === "arrowright" || codeKey === "arrowright") keys.current["d"] = down;
+      if (rawKey === "shift" || codeKey === "shiftleft" || codeKey === "shiftright") keys.current["shift"] = down;
+
+      if (down && (rawKey === "escape" || codeKey === "escape")) {
+        explore.select(null);
+        explore.ride(null);
+        tryUnlock();
+      }
     };
     const kDown = (e: KeyboardEvent) => onKey(e, true);
     const kUp = (e: KeyboardEvent) => onKey(e, false);
 
     const onClick = () => {
-      // clicking the crosshair onto a marker opens it; otherwise grab the mouse
       if (isLocked()) {
         if (hovered.current) {
           explore.select(hovered.current);
-          document.exitPointerLock();
+          tryUnlock();
         }
         return;
       }
-      if (!explore.state.selected) el.requestPointerLock?.();
+      if (!explore.state.selected) tryLock();
     };
 
     const onMove = (e: MouseEvent) => {
@@ -91,7 +119,6 @@ export function ExploreCamera() {
         pitch.current = MathUtils.clamp(pitch.current - e.movementY * 0.0019, -1.1, 0.9);
         return;
       }
-      // fallback for touch and for anyone whose browser refuses the lock
       if (!drag.current.on) return;
       yaw.current -= (e.clientX - drag.current.x) * 0.004;
       pitch.current = MathUtils.clamp(
@@ -108,9 +135,13 @@ export function ExploreCamera() {
     };
     const pUp = () => void (drag.current.on = false);
     const onLockChange = () => explore.setLocked(isLocked());
+    const onBlur = () => {
+      keys.current = {};
+    };
 
     window.addEventListener("keydown", kDown);
     window.addEventListener("keyup", kUp);
+    window.addEventListener("blur", onBlur);
     el.addEventListener("click", onClick);
     el.addEventListener("pointerdown", pDown);
     window.addEventListener("pointerup", pUp);
@@ -120,12 +151,13 @@ export function ExploreCamera() {
     return () => {
       window.removeEventListener("keydown", kDown);
       window.removeEventListener("keyup", kUp);
+      window.removeEventListener("blur", onBlur);
       el.removeEventListener("click", onClick);
       el.removeEventListener("pointerdown", pDown);
       window.removeEventListener("pointerup", pUp);
       window.removeEventListener("mousemove", onMove);
       document.removeEventListener("pointerlockchange", onLockChange);
-      if (isLocked()) document.exitPointerLock();
+      tryUnlock();
       keys.current = {};
       explore.setLocked(false);
     };
@@ -134,7 +166,7 @@ export function ExploreCamera() {
   /** Drop the visitor on the avenue outside the arch, facing into the park. */
   useEffect(() => {
     if (mode !== "explore") return;
-    pos.current.set(0, EYE, 300);
+    pos.current.set(0, EYE, 180);
     yaw.current = 0;
     pitch.current = -0.04;
     vel.current.set(0, 0, 0);
@@ -155,42 +187,135 @@ export function ExploreCamera() {
 
     if (riding && seats[riding]) {
       const seat = seats[riding];
-      // sit just outside the car, looking out over the park rather than at the
-      // back of the seat in front
-      seatOut.set(Math.sin(seat.yaw), 0, Math.cos(seat.yaw)).multiplyScalar(3.4);
-      cam.position.lerp(want.copy(seat.pos).add(seatOut).setY(seat.pos.y + 1.2), 0.22);
-      aim
-        .copy(cam.position)
-        .add(seatOut.multiplyScalar(9))
-        .setY(cam.position.y - 2 + Math.sin(state.clock.elapsedTime * 0.4) * 1.5);
+      const isSlide = riding.startsWith("waterSlide");
+      const isCarousel = riding.startsWith("carousel");
+      const isTeacups = riding.startsWith("teacups");
+      const isSwingRide = riding.startsWith("swingRide");
+      const isPirateShip = riding.startsWith("pirateShip");
+
+      if (isSlide) {
+        const fwdX = Math.sin(seat.yaw);
+        const fwdZ = Math.cos(seat.yaw);
+        cam.position.set(seat.pos.x, seat.pos.y + 4.5, seat.pos.z);
+        aim.set(
+          cam.position.x + fwdX * 14,
+          cam.position.y - 3,
+          cam.position.z + fwdZ * 14,
+        );
+      } else if (isCarousel) {
+        const outX = Math.sin(seat.yaw);
+        const outZ = Math.cos(seat.yaw);
+        want.set(seat.pos.x, seat.pos.y + 0.6, seat.pos.z);
+        cam.position.lerp(want, 0.35);
+        aim.set(
+          cam.position.x + outX * 16,
+          cam.position.y + 0.5 + Math.sin(state.clock.elapsedTime * 0.5) * 0.3,
+          cam.position.z + outZ * 16,
+        );
+      } else if (isTeacups) {
+        const outX = Math.sin(seat.yaw);
+        const outZ = Math.cos(seat.yaw);
+        want.set(seat.pos.x, seat.pos.y + 0.8, seat.pos.z);
+        cam.position.lerp(want, 0.4);
+        aim.set(
+          cam.position.x + outX * 14,
+          cam.position.y + 0.4,
+          cam.position.z + outZ * 14,
+        );
+      } else if (isSwingRide) {
+        const outX = Math.sin(seat.yaw);
+        const outZ = Math.cos(seat.yaw);
+        want.set(seat.pos.x, seat.pos.y + 0.5, seat.pos.z);
+        cam.position.lerp(want, 0.35);
+        aim.set(
+          cam.position.x + outX * 18,
+          cam.position.y - 1.5,
+          cam.position.z + outZ * 18,
+        );
+      } else if (isPirateShip) {
+        const fwdX = Math.sin(seat.yaw);
+        const fwdZ = Math.cos(seat.yaw);
+        want.set(seat.pos.x, seat.pos.y + 1.2, seat.pos.z);
+        cam.position.lerp(want, 0.4);
+        aim.set(
+          cam.position.x + fwdX * 15,
+          cam.position.y - 1.0,
+          cam.position.z + fwdZ * 15,
+        );
+      } else {
+        const outX = Math.sin(seat.yaw);
+        const outZ = Math.cos(seat.yaw);
+        want.set(
+          seat.pos.x + outX * 8,
+          seat.pos.y - 0.8,
+          seat.pos.z + outZ * 8,
+        );
+        cam.position.lerp(want, 0.22);
+        aim.set(
+          cam.position.x + outX * 20,
+          cam.position.y - 3 + Math.sin(state.clock.elapsedTime * 0.4) * 1.5,
+          cam.position.z + outZ * 20,
+        );
+      }
+
       cam.up.set(0, 1, 0);
       cam.lookAt(aim);
       cam.fov += (64 - cam.fov) * Math.min(1, dt * 3);
       cam.updateProjectionMatrix();
+
+      walker.x = seat.pos.x;
+      walker.z = seat.pos.z;
+      walker.yaw = seat.yaw;
       return;
     }
 
     /* ── parked at a marker, or walking ──────────────────────────────────── */
 
+    let inputFwd = 0;
+    let inputSide = 0;
+    if (keys.current["w"]) inputFwd += 1;
+    if (keys.current["s"]) inputFwd -= 1;
+    if (keys.current["d"]) inputSide += 1;
+    if (keys.current["a"]) inputSide -= 1;
+
+    // Pressing WASD movement keys while locked at a marker instantly resumes free walking
+    if (selected && (inputFwd !== 0 || inputSide !== 0)) {
+      explore.select(null);
+      lock.current = 0;
+    }
+
     const target = marker ? 1 : 0;
     lock.current += (target - lock.current) * Math.min(1, step * 2.6);
 
     if (lock.current < 0.995) {
-      const speed = keys.current.shift ? RUN : WALK;
-      flat.set(0, 0, 0);
-      if (keys.current.w || keys.current.arrowup) flat.z -= 1;
-      if (keys.current.s || keys.current.arrowdown) flat.z += 1;
-      if (keys.current.a || keys.current.arrowleft) flat.x -= 1;
-      if (keys.current.d || keys.current.arrowright) flat.x += 1;
-      if (flat.lengthSq() > 0) {
-        flat.normalize().applyAxisAngle(UP, yaw.current);
-        vel.current.addScaledVector(flat, speed * step * 6);
-      }
-      vel.current.multiplyScalar(Math.pow(0.0016, step));
-      pos.current.addScaledVector(vel.current, step);
+      const isShift = keys.current["shift"] || keys.current["shiftleft"] || keys.current["shiftright"];
+      const speed = isShift ? RUN : WALK;
 
-      // Soft wall at the fence: push back rather than clamp, so running at it
-      // slows you to a stop instead of pinning you against an invisible line.
+      let targetX = 0;
+      let targetZ = 0;
+
+      if (inputFwd !== 0 || inputSide !== 0) {
+        const inputLen = Math.hypot(inputFwd, inputSide);
+        const nFwd = inputFwd / inputLen;
+        const nSide = inputSide / inputLen;
+
+        const sinY = Math.sin(yaw.current);
+        const cosY = Math.cos(yaw.current);
+
+        const moveDirX = -sinY * nFwd + cosY * nSide;
+        const moveDirZ = -cosY * nFwd - sinY * nSide;
+
+        targetX = moveDirX * speed;
+        targetZ = moveDirZ * speed;
+      }
+
+      // Smooth, responsive acceleration and deceleration
+      vel.current.x += (targetX - vel.current.x) * Math.min(1, step * 16);
+      vel.current.z += (targetZ - vel.current.z) * Math.min(1, step * 16);
+
+      pos.current.x += vel.current.x * step;
+      pos.current.z += vel.current.z * step;
+
       const r = Math.hypot(pos.current.x, pos.current.z);
       if (r > BOUND) {
         const k = BOUND / r;
@@ -199,7 +324,6 @@ export function ExploreCamera() {
         vel.current.multiplyScalar(0.2);
       }
 
-      // and out of anything you have walked into
       if (resolve(pos.current.x, pos.current.z, 0.9, pushed)) {
         pos.current.x = pushed.x;
         pos.current.z = pushed.z;

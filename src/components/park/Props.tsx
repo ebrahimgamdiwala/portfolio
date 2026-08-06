@@ -244,8 +244,8 @@ function Crowd({ set }: { set: PropSet }) {
     return Array.from({ length: total }, (_, i) => ({
       x: set.crowd[i * 4],
       z: set.crowd[i * 4 + 1],
-      /** 1.55–1.92 m, applied as a scale on a 1.75 m figure. */
-      h: set.crowd[i * 4 + 2] / HUMAN_HEIGHT,
+      // Scaled up so visitors read prominently relative to the park's large structures.
+      h: (set.crowd[i * 4 + 2] / HUMAN_HEIGHT) * 2.2,
       phase: set.crowd[i * 4 + 3],
       // a quarter of them are going somewhere
       walks: rng.chance(0.26),

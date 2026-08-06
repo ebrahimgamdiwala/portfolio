@@ -64,7 +64,8 @@ export interface Slot {
 export const SLOTS: Record<AttractionKind, Slot[]> = {
   scoreboard: [{ x: -110, z: 74, rot: 2.42 }],
 
-  dropTower: [{ x: -258, z: 2, rot: -0.5 }],
+  // The entrance and ride panel now face the park centre instead of the fence.
+  dropTower: [{ x: -258, z: 2, rot: 1.58 }],
   machineHall: [{ x: -208, z: -134, rot: 0.46 }],
   ferrisWheel: [{ x: -150, z: -178, rot: 0.88 }],
 
@@ -118,7 +119,7 @@ export const FURNITURE = {
     { x: -46, z: 138, rot: 1.1 },
     { x: 116, z: -48, rot: -1.9 },
   ],
-  pirateShip: [{ x: 46, z: -22, rot: 0.7 }],
+  pirateShip: [{ x: 46, z: -22, rot: -2.3 }],
   hauntedHouse: [{ x: -76, z: 118, rot: -0.4 }],
   kiosks: [
     { x: -14, z: 24, rot: 1.2 },

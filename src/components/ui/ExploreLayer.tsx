@@ -174,7 +174,7 @@ function Card() {
           {marker.boardable && (
             <button
               type="button"
-              onClick={() => explore.ride(riding ? null : marker.kind)}
+              onClick={() => explore.ride(riding ? null : (marker.rideId ?? marker.kind))}
               className="rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-widest2 text-black transition-opacity hover:opacity-85"
               style={{ background: marker.accent }}
             >

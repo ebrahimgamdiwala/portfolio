@@ -16,6 +16,7 @@ import type { Piece } from "@/lib/park/coaster";
 import { FURNITURE, type Slot } from "@/lib/park/layout";
 import { paintedSteel, stripes } from "@/lib/park/textures";
 import { Rng } from "@/lib/park/rand";
+import { explore, seats } from "@/lib/explore/store";
 import { Pieces } from "./primitives/Pieces";
 
 /**
@@ -40,7 +41,7 @@ function Frame({ pieces, color }: { pieces: Piece[]; color: string }) {
 
 /* ── carousel ─────────────────────────────────────────────────────────────── */
 
-function Carousel({ slot, seed }: { slot: Slot; seed: number }) {
+function Carousel({ slot, seed, index }: { slot: Slot; seed: number; index: number }) {
   const spin = useRef<Group>(null);
   const horses = useRef<(Group | null)[]>([]);
   const R = 13;
@@ -53,6 +54,30 @@ function Carousel({ slot, seed }: { slot: Slot; seed: number }) {
     horses.current.forEach((h, i) => {
       if (h) h.position.y = 3.1 + Math.sin(t * 2.1 + i * 0.9) * 0.9;
     });
+
+    // The first horse is the boarding seat. Its published position follows
+    // the rotating platform, so the first-person camera rides with it.
+    const a = spin.current?.rotation.y ?? 0;
+    const hY = 3.1 + Math.sin(t * 2.1) * 0.9;
+    // Three.js Y-rotation: x' = x·cos(a) + z·sin(a), z' = -x·sin(a) + z·cos(a)
+    // Horse 0 sits at local (R, 0, 0), so after spin: (R·cos(a), 0, -R·sin(a))
+    const localX = Math.cos(a) * R;
+    const localZ = -Math.sin(a) * R;
+    const cosR = Math.cos(slot.rot);
+    const sinR = Math.sin(slot.rot);
+    // Apply the outer group's rotation (slot.rot) to get world-space offset
+    const worldDx = localX * cosR + localZ * sinR;
+    const worldDz = -localX * sinR + localZ * cosR;
+    const key = `carousel${index}`;
+    if (seats[key]) {
+      seats[key].pos.set(
+        slot.x + worldDx,
+        hY + 1.2,
+        slot.z + worldDz,
+      );
+      // Yaw points radially outward from centre so the rider sees the park.
+      seats[key].yaw = Math.atan2(worldDx, worldDz);
+    }
   });
 
   return (
@@ -133,7 +158,7 @@ function Carousel({ slot, seed }: { slot: Slot; seed: number }) {
 
 /* ── swing ride ───────────────────────────────────────────────────────────── */
 
-function SwingRide({ slot, seed }: { slot: Slot; seed: number }) {
+function SwingRide({ slot, seed, index }: { slot: Slot; seed: number; index: number }) {
   const head = useRef<Group>(null);
   const arms = useRef<Group>(null);
   const H = 34;
@@ -146,6 +171,24 @@ function SwingRide({ slot, seed }: { slot: Slot; seed: number }) {
       // the chains fly out as it winds up, then settle
       const swing = 0.55 + Math.sin(state.clock.elapsedTime * 0.28) * 0.22;
       arms.current.scale.setScalar(swing / 0.55);
+    }
+    const a = head.current?.rotation.y ?? 0;
+    const sScale = arms.current?.scale.x ?? 1;
+    const rSeat = 13 * sScale;
+    const localX = Math.cos(a) * rSeat;
+    const localZ = -Math.sin(a) * rSeat;
+    const cosR = Math.cos(slot.rot);
+    const sinR = Math.sin(slot.rot);
+    const worldDx = localX * cosR + localZ * sinR;
+    const worldDz = -localX * sinR + localZ * cosR;
+    const key = `swingRide${index}`;
+    if (seats[key]) {
+      seats[key].pos.set(
+        slot.x + worldDx,
+        H - 15,
+        slot.z + worldDz,
+      );
+      seats[key].yaw = Math.atan2(worldDx, worldDz);
     }
   });
 
@@ -216,7 +259,7 @@ function SwingRide({ slot, seed }: { slot: Slot; seed: number }) {
 
 /* ── teacups ──────────────────────────────────────────────────────────────── */
 
-function Teacups({ slot, seed }: { slot: Slot; seed: number }) {
+function Teacups({ slot, seed, index }: { slot: Slot; seed: number; index: number }) {
   const plate = useRef<Group>(null);
   const cups = useRef<(Group | null)[]>([]);
   const R = 8.5;
@@ -226,6 +269,24 @@ function Teacups({ slot, seed }: { slot: Slot; seed: number }) {
     cups.current.forEach((c, i) => {
       if (c) c.rotation.y -= dt * (1.1 + (i % 3) * 0.4);
     });
+
+    const aPlate = plate.current?.rotation.y ?? 0;
+    const aCup = cups.current[0]?.rotation.y ?? 0;
+    const plateX = Math.cos(aPlate) * R;
+    const plateZ = -Math.sin(aPlate) * R;
+    const cosR = Math.cos(slot.rot);
+    const sinR = Math.sin(slot.rot);
+    const worldDx = plateX * cosR + plateZ * sinR;
+    const worldDz = -plateX * sinR + plateZ * cosR;
+    const key = `teacups${index}`;
+    if (seats[key]) {
+      seats[key].pos.set(
+        slot.x + worldDx,
+        2.8,
+        slot.z + worldDz,
+      );
+      seats[key].yaw = Math.atan2(worldDx, worldDz) + aCup;
+    }
   });
 
   return (
@@ -456,11 +517,12 @@ const FLUME_COLOURS = ["#39d3ff", "#ffcf3f", "#ff5d9e"];
  * low-roughness plane, so it takes the whole park's neon out of the environment
  * map and lays it back down flat — which is what actually sells it as water.
  */
-function WaterSlide({ slot, seed }: { slot: Slot; seed: number }) {
+function WaterSlide({ slot, seed, index }: { slot: Slot; seed: number; index: number }) {
   const H = 42;
   const R_POOL = 26;
   const surface = useRef<Mesh>(null);
   const riders = useRef<(Mesh | null)[]>([]);
+  const boardTime = useRef(-1);
 
   const flumes = useMemo(
     () =>
@@ -521,6 +583,29 @@ function WaterSlide({ slot, seed }: { slot: Slot; seed: number }) {
       const phase = (t * 0.17 + k * 0.37) % 1;
       flumes[k].curve.getPointAt(phase, m.position);
     });
+
+    // Start a boarded rider from the platform, then carry them down the first
+    // flume. The live seat is transformed from the ride's local space.
+    const riding = explore.state.riding === `waterSlide${index}`;
+    if (riding && boardTime.current < 0) boardTime.current = t;
+    if (!riding) boardTime.current = -1;
+    const phase = riding ? Math.min(((t - boardTime.current) * 0.22) % 1, 0.98) : (t * 0.17) % 1;
+    const point = flumes[0].curve.getPointAt(phase);
+    const tangent = flumes[0].curve.getTangentAt(Math.min(phase, 0.97));
+    const c = Math.cos(slot.rot);
+    const s = Math.sin(slot.rot);
+    const key = `waterSlide${index}`;
+    if (seats[key]) {
+      seats[key].pos.set(
+        slot.x + c * point.x + s * point.z,
+        point.y,
+        slot.z - s * point.x + c * point.z,
+      );
+      seats[key].yaw = Math.atan2(
+        c * tangent.x + s * tangent.z,
+        -s * tangent.x + c * tangent.z,
+      );
+    }
   });
 
   const water = paintedSteel(6);
@@ -590,63 +675,183 @@ function WaterSlide({ slot, seed }: { slot: Slot; seed: number }) {
 
 /* ── pirate ship ──────────────────────────────────────────────────────────── */
 
-function PirateShip({ slot }: { slot: Slot }) {
+function PirateShip({ slot, index }: { slot: Slot; index: number }) {
   const arm = useRef<Group>(null);
-  const H = 26;
+  const H = 28;
 
+  // Steel/wooden A-frame gantry supporting the central pivot
   const gantry = useMemo(() => {
     const out: Piece[] = [];
-    for (const sz of [-1, 1]) {
-      out.push(beam(new Vector3(-14, 0, sz * 9), new Vector3(0, H, sz * 2), 1.1));
-      out.push(beam(new Vector3(14, 0, sz * 9), new Vector3(0, H, sz * 2), 1.1));
-      out.push(beam(new Vector3(-14, 0, sz * 9), new Vector3(14, 0, sz * 9), 0.6));
+    for (const sx of [-6, 6]) {
+      out.push(beam(new Vector3(sx, 0, -14), new Vector3(sx, H, 0), 1.2));
+      out.push(beam(new Vector3(sx, 0, 14), new Vector3(sx, H, 0), 1.2));
+      out.push(beam(new Vector3(sx, 8, -10), new Vector3(sx, 8, 10), 0.7));
+      out.push(beam(new Vector3(sx, 16, -6), new Vector3(sx, 16, 6), 0.7));
     }
-    out.push(beam(new Vector3(0, H, -2), new Vector3(0, H, 2), 1.3));
+    out.push(beam(new Vector3(-6.5, H, 0), new Vector3(6.5, H, 0), 1.4));
     return out;
   }, []);
 
   useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    const swingAngle = -Math.sin(t * 0.65) * 0.85;
     if (arm.current) {
-      arm.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.62) * 1.05;
+      arm.current.rotation.x = swingAngle;
+    }
+    const L = 19;
+    const localZ = Math.sin(swingAngle) * L;
+    const localY = H - Math.cos(swingAngle) * L + 2;
+    const cosR = Math.cos(slot.rot);
+    const sinR = Math.sin(slot.rot);
+    const worldDx = localZ * sinR;
+    const worldDz = localZ * cosR;
+    const key = `pirateShip${index}`;
+    if (seats[key]) {
+      seats[key].pos.set(
+        slot.x + worldDx,
+        localY,
+        slot.z + worldDz,
+      );
+      seats[key].yaw = slot.rot + Math.PI;
     }
   });
 
   return (
     <group position={[slot.x, 0, slot.z]} rotation={[0, slot.rot, 0]}>
+      {/* cobbled foundation platform */}
       <mesh position={[0, 0.4, 0]} receiveShadow>
-        <cylinderGeometry args={[17, 18, 0.8, 28]} />
+        <cylinderGeometry args={[18, 19, 0.8, 28]} />
         <meshStandardMaterial color="#241f28" roughness={0.85} />
       </mesh>
-      <Frame pieces={gantry} color="#5b4636" />
+      {/* wooden gantry frame */}
+      <Frame pieces={gantry} color="#4a3525" />
 
+      {/* swinging pendulum arm & galleon ship */}
       <group ref={arm} position={[0, H, 0]}>
-        {[-1, 1].map((sx) => (
-          <mesh key={sx} position={[sx * 4.5, -8.5, 0]}>
-            <boxGeometry args={[0.5, 17, 0.5]} />
-            <meshStandardMaterial color="#8b93a4" roughness={0.4} metalness={0.85} />
+        {/* Support arms extending down from top axle to ship hull at ±X */}
+        {[-4, 4].map((sx) => (
+          <mesh key={sx} position={[sx, -9.5, 0]}>
+            <boxGeometry args={[0.4, 19, 0.4]} />
+            <meshStandardMaterial color="#362417" roughness={0.5} metalness={0.7} />
           </mesh>
         ))}
-        <group position={[0, -18, 0]}>
-          {/* hull */}
-          <mesh castShadow>
-            <cylinderGeometry args={[3.4, 2.2, 15, 14, 1, false, 0, Math.PI]} />
-            <meshStandardMaterial color="#6b3f2a" roughness={0.68} side={DoubleSide} />
+
+        {/* the pirate galleon ship (oriented horizontally along Z axis, length = 21, width = 7.2) */}
+        <group position={[0, -19, 0]}>
+          {/* Main wooden hull body */}
+          <mesh castShadow receiveShadow position={[0, 1.2, 0]}>
+            <boxGeometry args={[7.2, 3.6, 21]} />
+            <meshStandardMaterial color="#3b2316" roughness={0.65} />
           </mesh>
-          <mesh position={[0, 1.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <boxGeometry args={[7.4, 15.4, 0.3]} />
-            <meshStandardMaterial color="#4c2d1e" roughness={0.75} />
+
+          {/* Curved keel bottom */}
+          <mesh position={[0, -0.6, 0]} castShadow>
+            <boxGeometry args={[5.5, 1.6, 19]} />
+            <meshStandardMaterial color="#2b180d" roughness={0.75} />
           </mesh>
-          {/* prow and stern */}
-          {[-1, 1].map((sz) => (
-            <mesh key={sz} position={[0, 2.4, sz * 7.6]} rotation={[sz * 0.5, 0, 0]} castShadow>
-              <coneGeometry args={[2.6, 5, 10]} />
-              <meshStandardMaterial color="#6b3f2a" roughness={0.68} />
+
+          {/* Upper deck flooring */}
+          <mesh position={[0, 3.1, 0]}>
+            <boxGeometry args={[7.4, 0.2, 21.2]} />
+            <meshStandardMaterial color="#593724" roughness={0.7} />
+          </mesh>
+
+          {/* Gold decorative hull side trim */}
+          {[-3.7, 3.7].map((sx) => (
+            <mesh key={sx} position={[sx, 3.1, 0]}>
+              <boxGeometry args={[0.2, 0.3, 21.4]} />
+              <meshStandardMaterial color="#e5b842" roughness={0.3} metalness={0.85} />
             </mesh>
           ))}
-          <mesh position={[0, 2.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[3.5, 0.2, 6, 20]} />
-            <meshBasicMaterial color="#ffca5a" toneMapped={false} />
-          </mesh>
+
+          {/* Pointed bow (prow) at +Z */}
+          <group position={[0, 2.5, 10.5]} rotation={[-0.35, 0, 0]}>
+            <mesh rotation={[0, Math.PI / 4, 0]} castShadow>
+              <coneGeometry args={[3.2, 6, 4]} />
+              <meshStandardMaterial color="#4a2d1d" roughness={0.6} />
+            </mesh>
+            {/* Golden bowsprit pole & dragon head */}
+            <mesh position={[0, 3.5, 0]} rotation={[0.2, 0, 0]}>
+              <cylinderGeometry args={[0.2, 0.4, 5, 8]} />
+              <meshStandardMaterial color="#d4af37" roughness={0.2} metalness={0.9} />
+            </mesh>
+            <mesh position={[0, 6, 0]}>
+              <sphereGeometry args={[0.6, 10, 8]} />
+              <meshStandardMaterial color="#d4af37" roughness={0.2} metalness={0.95} />
+            </mesh>
+          </group>
+
+          {/* Raised stern cabin (Poop Deck) at -Z */}
+          <group position={[0, 4.2, -9.2]}>
+            <mesh castShadow>
+              <boxGeometry args={[7.2, 4.4, 5]} />
+              <meshStandardMaterial color="#382114" roughness={0.65} />
+            </mesh>
+            {/* Stern windows */}
+            {[-2, 0, 2].map((wx) => (
+              <mesh key={wx} position={[wx, 0.4, -2.6]}>
+                <boxGeometry args={[1.0, 1.5, 0.2]} />
+                <meshBasicMaterial color="#ffdf85" toneMapped={false} />
+              </mesh>
+            ))}
+          </group>
+
+          {/* 3 wooden masts with crossyards & white canvas sails */}
+          {[
+            { z: 5, h: 14, r: 0.32 },
+            { z: 0, h: 17, r: 0.38 },
+            { z: -5, h: 12, r: 0.3 },
+          ].map((m, i) => (
+            <group key={i} position={[0, m.h / 2 + 3.1, m.z]}>
+              {/* mast pole */}
+              <mesh castShadow>
+                <cylinderGeometry args={[m.r * 0.7, m.r, m.h, 10]} />
+                <meshStandardMaterial color="#2d1b11" roughness={0.7} />
+              </mesh>
+              {/* yardarm crossbar across X axis */}
+              <mesh position={[0, m.h * 0.2, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+                <cylinderGeometry args={[0.15, 0.15, 6.5, 8]} />
+                <meshStandardMaterial color="#3b2316" roughness={0.6} />
+              </mesh>
+              {/* rolled white canvas sail along X axis */}
+              <mesh position={[0, m.h * 0.15, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[1.1, 1.1, 5.8, 12]} />
+                <meshStandardMaterial color="#f0eae1" roughness={0.8} />
+              </mesh>
+            </group>
+          ))}
+
+          {/* Jolly Roger pirate flag on main mast top */}
+          <group position={[0, 20.2, 0]}>
+            <mesh position={[1.1, 0, 0]}>
+              <boxGeometry args={[2.2, 1.4, 0.06]} />
+              <meshStandardMaterial color="#151515" roughness={0.9} />
+            </mesh>
+            <mesh position={[1.1, 0, 0.04]}>
+              <circleGeometry args={[0.4, 10]} />
+              <meshBasicMaterial color="#ffffff" toneMapped={false} />
+            </mesh>
+          </group>
+
+          {/* Side cannon port-holes & black metal cannons along ±X sides */}
+          {[-6, -3, 0, 3, 6].map((cz) => (
+            <group key={cz}>
+              {[-3.7, 3.7].map((cx) => (
+                <mesh key={cx} position={[cx, 2.2, cz]} rotation={[0, 0, cx > 0 ? -1.57 : 1.57]}>
+                  <cylinderGeometry args={[0.2, 0.25, 1.4, 8]} />
+                  <meshStandardMaterial color="#1c1f24" roughness={0.3} metalness={0.9} />
+                </mesh>
+              ))}
+            </group>
+          ))}
+
+          {/* Wooden deck seats */}
+          {[-6, -3, 0, 3, 6].map((sz) => (
+            <mesh key={sz} position={[0, 3.5, sz]} castShadow>
+              <boxGeometry args={[6.0, 0.6, 1.1]} />
+              <meshStandardMaterial color="#2d1b11" roughness={0.8} />
+            </mesh>
+          ))}
         </group>
       </group>
     </group>
@@ -770,13 +975,13 @@ export function Funfair() {
   return (
     <group>
       {FURNITURE.carousel.map((s, i) => (
-        <Carousel key={`c${i}`} slot={s} seed={i * 3 + 1} />
+        <Carousel key={`c${i}`} slot={s} seed={i * 3 + 1} index={i} />
       ))}
       {FURNITURE.swingRide.map((s, i) => (
-        <SwingRide key={`s${i}`} slot={s} seed={i * 5 + 2} />
+        <SwingRide key={`s${i}`} slot={s} seed={i * 5 + 2} index={i} />
       ))}
       {FURNITURE.teacups.map((s, i) => (
-        <Teacups key={`t${i}`} slot={s} seed={i * 7 + 3} />
+        <Teacups key={`t${i}`} slot={s} seed={i * 7 + 3} index={i} />
       ))}
       {FURNITURE.bumperCars.map((s, i) => (
         <BumperCars key={`b${i}`} slot={s} />
@@ -788,10 +993,10 @@ export function Funfair() {
         <WaterTower key={`w${i}`} slot={s} />
       ))}
       {FURNITURE.waterSlide.map((s, i) => (
-        <WaterSlide key={`f${i}`} slot={s} seed={i * 2.1} />
+        <WaterSlide key={`f${i}`} slot={s} seed={i * 2.1} index={i} />
       ))}
       {FURNITURE.pirateShip.map((s, i) => (
-        <PirateShip key={`p${i}`} slot={s} />
+        <PirateShip key={`p${i}`} slot={s} index={i} />
       ))}
       {FURNITURE.hauntedHouse.map((s, i) => (
         <HauntedHouse key={`h${i}`} slot={s} />
