@@ -322,7 +322,7 @@ function Teacups({ slot, seed, index }: { slot: Slot; seed: number; index: numbe
                   side={DoubleSide}
                 />
               </mesh>
-              <mesh position={[2.5, 0.3, 0]} rotation={[0, 0, -Math.PI / 2]} frustumCulled={false}>
+              <mesh position={[1.8, 0.3, 0]} rotation={[0, 0, -Math.PI / 2]} frustumCulled={false}>
                 <torusGeometry args={[0.9, 0.22, 6, 14, Math.PI]} />
                 <meshStandardMaterial
                   color={CANDY[(i * 2 + seed) % CANDY.length]}

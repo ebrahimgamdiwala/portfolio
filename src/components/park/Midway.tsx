@@ -143,7 +143,7 @@ function Plinth({ item, slot, station }: { item: StationItem; slot: Slot; statio
           />
         </mesh>
         {[-1, 1].map((sx) => (
-          <mesh key={sx} position={[sx * 2.3, 0.3, 0]} rotation={[0, 0, (-sx * Math.PI) / 2]} frustumCulled={false}>
+          <mesh key={sx} position={[sx * 1.6, 0.3, 0]} rotation={[0, 0, (-sx * Math.PI) / 2]} frustumCulled={false}>
             <torusGeometry args={[1, 0.22, 8, 16, Math.PI]} />
             <meshPhysicalMaterial color="#ffd479" roughness={0.14} metalness={1} clearcoat={1} />
           </mesh>
