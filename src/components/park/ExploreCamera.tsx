@@ -54,6 +54,7 @@ export function ExploreCamera() {
   const yaw = useRef(0);
   const pitch = useRef(-0.04);
   const keys = useRef<Set<string>>(new Set());
+  if (!(keys.current instanceof Set)) keys.current = new Set();
   const drag = useRef<{ on: boolean; x: number; y: number }>({ on: false, x: 0, y: 0 });
   /** 0 = free, 1 = fully parked at the selected marker's viewpoint. */
   const lock = useRef(0);

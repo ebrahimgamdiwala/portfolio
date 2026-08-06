@@ -16,6 +16,7 @@ import type { Piece } from "@/lib/park/coaster";
 import { FURNITURE, type Slot } from "@/lib/park/layout";
 import { paintedSteel, stripes } from "@/lib/park/textures";
 import { Rng } from "@/lib/park/rand";
+import { neonText } from "@/lib/park/sign";
 import { explore, seats } from "@/lib/explore/store";
 import { Pieces } from "./primitives/Pieces";
 
@@ -942,6 +943,11 @@ function Kiosks() {
     () => KIOSK_SIGNS.map((_, i) => stripes("#faf6ee", CANDY[i % CANDY.length], 12)),
     [],
   );
+  
+  const signs = useMemo(
+    () => KIOSK_SIGNS.map((text, i) => neonText(text, CANDY[i % CANDY.length], { width: 512, height: 128, mono: true })),
+    []
+  );
 
   return (
     <group>
@@ -960,9 +966,13 @@ function Kiosks() {
             <boxGeometry args={[8, 0.2, 3.4]} />
             <meshStandardMaterial map={awnings[i]} roughness={0.7} side={DoubleSide} />
           </mesh>
+          <mesh position={[0, 6.4, 0.16]}>
+            <planeGeometry args={[6.8, 1.2]} />
+            <meshBasicMaterial map={signs[i]} transparent depthWrite={false} toneMapped={false} />
+          </mesh>
           <mesh position={[0, 6.4, 0]}>
             <boxGeometry args={[7.2, 1.4, 0.3]} />
-            <meshBasicMaterial color={CANDY[i % CANDY.length]} toneMapped={false} />
+            <meshStandardMaterial color="#1a1512" roughness={0.9} />
           </mesh>
         </group>
       ))}

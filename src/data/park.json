@@ -248,7 +248,15 @@
             "End-to-end Meta Ads optimisation pipeline — Shopify/e-commerce scraping, LLM ad-copy generation and performance analytics.",
             "AI-driven targeting and creative optimisation, lifting conversion rates ~20–35% and campaign revenue."
           ],
-          "tags": ["MongoDB", "Firebase", "Gemini", "OpenAI", "AWS EC2", "S3", "Secrets Manager"]
+          "tags": ["MongoDB", "Firebase", "Gemini", "OpenAI", "AWS EC2", "S3", "Secrets Manager"],
+          "attraction": "machineHall",
+          "poster": {
+            "kicker": "THE WORKS",
+            "headline": "DIGIKENDR",
+            "ride": "AI & SOFTWARE INTERN",
+            "sub": "LLM AD-COPY PIPELINE",
+            "stat": "+35% LIFT"
+          }
         }
       ]
     },

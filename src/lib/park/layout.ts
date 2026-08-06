@@ -110,7 +110,7 @@ export const FURNITURE = {
   ],
   teacups: [
     { x: -18, z: -64, rot: 0.2 },
-    { x: 104, z: 46, rot: -0.4 },
+    { x: 116, z: 62, rot: -0.4 },
   ],
   bumperCars: [{ x: 14, z: -96, rot: 0.16 }],
   bigTop: [{ x: 72, z: 34, rot: -0.25 }],
