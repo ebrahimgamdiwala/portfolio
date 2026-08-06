@@ -235,7 +235,8 @@ export function ExploreCamera() {
       } else if (isPirateShip) {
         const fwdX = Math.sin(seat.yaw);
         const fwdZ = Math.cos(seat.yaw);
-        cam.position.set(seat.pos.x, seat.pos.y + 1.6, seat.pos.z);
+        // Sit elevated on top of the galleon deck above passenger seats
+        cam.position.set(seat.pos.x, seat.pos.y + 4.8, seat.pos.z);
         aim.set(
           cam.position.x + fwdX * 16,
           cam.position.y - 0.5,
