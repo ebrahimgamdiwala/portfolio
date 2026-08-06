@@ -1,0 +1,18 @@
+# Normalise line endings so the repo stays consistent across platforms.
+* text=auto eol=lf
+
+# Binary assets — never touch these.
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.glb   binary
+*.gltf  binary
+
+# Keep generated lockfiles out of diffs and language stats.
+package-lock.json linguist-generated=true -diff
