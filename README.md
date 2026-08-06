@@ -1,11 +1,14 @@
 # Ebrahim Gamdiwala — Portfolio
 
-A scroll-driven roller-coaster ride across a procedurally generated floating voxel island.
-The landing page opens on a high orbit over the whole world; scrolling puts you on the rails
-and carries you through the biomes that tell the story — plains, jungle, city, desert,
-caldera, summit — then loops back to the start.
+A scroll-driven roller-coaster ride through an amusement park at dusk. The park *is* the
+résumé: projects are the headline attractions, jobs are the marquee venues, skills are the
+midway stalls, awards are the prize row — and roadside **ad hoardings** carry each one as a
+poster you read on the approach, the way you read billboards from a moving car.
 
-**Next.js 15 · React 19 · three.js / @react-three/fiber · Tailwind · Lenis · Framer Motion**
+The sun sets as you descend into it. Because the circuit is closed, the lap wraps back to the
+station and the day starts over.
+
+**Next.js 15 · React 19 · three.js / @react-three/fiber · drei · postprocessing · Tailwind · Lenis**
 
 ```bash
 npm install
@@ -16,60 +19,98 @@ npm run dev      # http://localhost:3000
 
 | branch | vibe |
 | --- | --- |
-| `biome` | floating voxel island — biome-per-chapter (this one) |
-| _planned_ | amusement park |
+| `amusement-park` | photoreal night park, coaster ride (this one) |
+| `biome` | floating voxel island, biome-per-chapter |
 
-Each branch is a self-contained take on the same content. `src/data/portfolio.json` is
-intended to stay compatible across them.
+Each branch is a self-contained take on the same content.
 
 ## Editing content
 
-Everything you'd normally change lives in **one file**: [`src/data/portfolio.json`](src/data/portfolio.json).
+Everything you'd normally change lives in **one file**: [`src/data/park.json`](src/data/park.json).
 
 - `meta` — name, role, contact, socials, résumé path
+- `park` — park name, seed, and the dusk → night sky keyframes
 - `hero` — landing copy and headline stats
 - `stations[]` — the ride, in order
 
-Each station owns a slice of the scroll timeline and is pinned to a biome:
+Each station owns a slice of the scroll timeline and a zone of the park:
 
 ```jsonc
 {
   "id": "projects",
-  "biome": "jungle",          // a biome in src/lib/world/layout.ts
-  "kind": "projects",         // picks the renderer in StationContent.tsx
-  "scroll": { "enter": 0.24, "exit": 0.44 },   // 0 = top of page, 1 = bottom
-  "items": [ /* cards */ ]
+  "kind": "projects",          // picks the overlay renderer in StationContent.tsx
+  "zone": "attractionRow",     // a zone in src/lib/park/layout.ts
+  "accent": "#ff4d8d",         // drives every neon and hoarding in this zone
+  "shots": ["flank", "drone", "chase", "flank", "onboard", "drone"],
+  "scroll": { "enter": 0.24, "exit": 0.48 },   // 0 = top of page, 1 = bottom
+  "items": [{
+    "title": "StudyStack",
+    "points": ["…"], "tags": ["…"],
+    "attraction": "dropTower",   // which structure gets built for it
+    "poster": {                  // ← painted onto a real billboard in the park
+      "kicker": "NOW BOARDING",
+      "headline": "STUDYSTACK",
+      "ride": "THE LOAN DROP",
+      "sub": "TOP 3 OF 27,000 TEAMS",
+      "stat": "₹1,00,000"
+    }
+  }]
 }
 ```
 
-`scroll` is the only coupling between copy and camera — the spline re-times itself so each
-station's track anchor lands inside its own slice. Ranges should be contiguous and cover 0 → 1.
+`scroll` ranges must be contiguous and cover 0 → 1. Everything else is optional — leave out a
+`poster` and one is derived from the item's own title and subtitle.
 
-`kind` selects the renderer: `intro`, `education`, `experience`, `projects`, `skills`,
-`awards`, `contact`.
+**`attraction`** picks the structure: `dropTower`, `ferrisWheel`, `machineHall`, `mainStage`,
+`signalTower`, `scoreboard`, `stall`, `plinth`. Positions come from `SLOTS` in
+`src/lib/park/layout.ts`, consumed in JSON order.
 
-## Changing the world
+**`shots`** is the camera cut list for that station, spread evenly across its slice:
+
+| rig | shot |
+| --- | --- |
+| `onboard` | front seat, banking with the track |
+| `chase` | behind and above the train |
+| `flank` | alongside, train in profile against the park |
+| `drone` | high and ahead, looking back as the train comes on |
+| `crane` | a fixed camera by the rails that the train sweeps past |
+
+## How it works
 
 | What | Where |
 | --- | --- |
-| Biome positions, elevation, colours, sky | `src/lib/world/layout.ts` |
-| Rivers, lava, volcano, mesas | `src/lib/world/layout.ts` |
-| Palette | `src/lib/world/palette.ts` |
-| Heightfield, water, cliffs | `src/lib/world/terrain.ts` |
-| Trees, buildings, wildlife, clouds | `src/lib/world/scatter.ts` |
-| Coaster spline & station anchors | `src/lib/world/track.ts` |
-| Dawn → night lighting | `src/lib/world/sky.ts` |
-| Scroll timing & lap wrap | `src/lib/scroll/timeline.ts` |
+| Zones, ride slots, funfair placement | `src/lib/park/layout.ts` |
+| Coaster spline, speed and banking | `src/lib/park/coaster.ts` |
+| Hoarding placement off the rails | `src/lib/park/signage.ts` |
+| Poster artwork | `src/lib/park/poster.ts` |
+| Ground surface map (paths, pads, wear) | `src/lib/park/parkMap.ts` |
+| Procedural materials | `src/lib/park/textures.ts` |
+| Dusk → night keyframes | `src/lib/park/sky.ts` |
+| Practical light candidates | `src/lib/park/lights.ts` |
+| Scroll timing and lap wrap | `src/lib/scroll/timeline.ts` |
 
-The world is deterministic — one seed (`WORLD.seed`) rebuilds the same island every time, so
-nothing drifts between server and client. Change the seed to reroll the terrain noise while
-keeping the layout.
+Two things are worth knowing before changing the ride:
+
+**Speed is physical.** Rather than moving the car at a constant rate along the spline, the
+builder solves `v = sqrt(2g·Δh)` from the crest of the lift hill and integrates `dt = ds/v`
+into a time table. The car crawls up the lift and howls out of the drop because the geometry
+says it should. The brake run bleeds it back to chain speed before the station, which is also
+what makes the lap wrap invisible.
+
+**Banking is physical.** Each sample's roll is `atan(v²κ/g)` — the angle that puts the rider's
+net force straight down through the seat. That is how real track is designed.
 
 ## Notes
 
-- ~30k voxel columns drawn in roughly a dozen `InstancedMesh` calls with per-instance colour.
-- Water, lava and waterfalls animate in patched vertex shaders; weather is GPU-only point fields.
-- Nothing scroll-linked goes through React state — `ScrollProvider` exposes refs that both the
+- The park is generated once behind the loader from one seed and cached at module scope.
+- Nothing scroll-linked goes through React state. `ScrollProvider` exposes refs that both the
   canvas and the DOM overlay read inside their own animation frames.
-- `src/lib/scroll/timeline.ts` has no imports on purpose: it sits on the boundary between the
-  main bundle and the lazily-loaded renderer.
+- There are no photo textures, HDRIs or model files anywhere in this project. Every surface is
+  baked from a canvas at runtime; realism comes from material response, the prefiltered
+  environment map in `env.ts`, and bloom.
+- ~80 things in the park want to cast light. `LightPool` keeps a handful of real point lights
+  and reassigns them to whichever candidates are nearest the camera each frame.
+- Quality tiers step down automatically when frames slip. Append `?q=low|medium|high` to pin
+  one (and freeze the auto-downgrade) — useful for checking how it holds up a notch down.
+- In development, `window.__ride.seek(0..1)` parks the ride at an exact point and
+  `window.__park` exposes the solved circuit and layout tables.

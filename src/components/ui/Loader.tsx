@@ -5,8 +5,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { meta } from "@/lib/content";
 
 /**
- * Covers the void while ~30k terrain columns are generated. The counter is
- * time-based rather than fake-random so it always finishes on the real handoff.
+ * Covers the void while the circuit is solved and the park is dressed. The
+ * counter is time-based rather than fake-random so it always finishes on the
+ * real handoff.
  */
 export function Loader({ ready }: { ready: boolean }) {
   const [pct, setPct] = useState(0);
@@ -48,7 +49,7 @@ export function Loader({ ready }: { ready: boolean }) {
           <div className="flex items-end justify-between gap-6">
             <div className="max-w-sm">
               <div className="font-mono text-[11px] uppercase tracking-widest2 text-white/35">
-                Generating the island
+                Assembling the park
               </div>
               <div className="mt-3 h-px w-full max-w-xs overflow-hidden bg-white/12">
                 <motion.div

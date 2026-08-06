@@ -1,0 +1,357 @@
+{
+  "$comment": "SINGLE SOURCE OF TRUTH. Every word, colour, attraction and camera move on the site comes from this file. `stations` are the ride, in order: each owns a slice of the scroll timeline (scroll.enter -> scroll.exit) and sits in a zone defined in src/lib/park/layout.ts. Each item's `poster` is painted onto a real billboard in the 3D park, and `attraction` picks which structure gets built for it.",
+
+  "meta": {
+    "name": "Ebrahim Gamdiwala",
+    "shortName": "Ebrahim",
+    "role": "Software Engineer",
+    "focus": "Full-stack · AI Systems · Cloud",
+    "tagline": "I build systems that think.",
+    "intro": "Computer Science & Data Science undergrad building full-stack platforms, agentic AI pipelines and the cloud infrastructure that keeps them standing.",
+    "location": "Mumbai, India",
+    "email": "ebrahimgamdiwala@gmail.com",
+    "phone": "+91 91370 84920",
+    "availability": "Open to opportunities",
+    "resumeUrl": "/Ebrahim_Gamdiwala_Resume.pdf",
+    "socials": [
+      { "label": "GitHub", "handle": "ebrahimgamdiwala", "url": "https://github.com/ebrahimgamdiwala" },
+      { "label": "LinkedIn", "handle": "ebrahim-gamdiwala", "url": "https://linkedin.com/in/ebrahim-gamdiwala/" },
+      { "label": "LeetCode", "handle": "ebrahimgamdiwala", "url": "https://leetcode.com/u/ebrahimgamdiwala/" },
+      { "label": "Email", "handle": "ebrahimgamdiwala@gmail.com", "url": "mailto:ebrahimgamdiwala@gmail.com" }
+    ]
+  },
+
+  "park": {
+    "name": "GAMDIWALA PARK",
+    "est": "EST. 2023",
+    "gateMotto": "ALL RIDES · ONE TICKET",
+    "seed": 7,
+
+    "$comment_sky": "Dusk -> night, keyed on ride progress (0 = the ride begins, 1 = the lap closes). `elev` is the sun's elevation in degrees; once it goes negative the park's neon carries the frame. The lap wrap resets progress, so every lap opens at golden hour again.",
+    "sky": [
+      { "at": 0.0,  "sun": "#ff9d4a", "sky": "#3a5488", "haze": "#ff8a4c", "fog": "#4a4160", "elev": 7,   "azim": 128, "sunI": 3.1, "ambI": 0.62, "stars": 0.0,  "neon": 0.15, "exposure": 1.02 },
+      { "at": 0.22, "sun": "#ff7a3c", "sky": "#294273", "haze": "#ff6b48", "fog": "#332c4c", "elev": 2,   "azim": 136, "sunI": 2.3, "ambI": 0.58, "stars": 0.08, "neon": 0.45, "exposure": 1.05 },
+      { "at": 0.42, "sun": "#ff5f45", "sky": "#182a5c", "haze": "#c8506a", "fog": "#241f3d", "elev": -3, "azim": 145, "sunI": 1.1, "ambI": 0.54, "stars": 0.35, "neon": 0.85, "exposure": 1.1 },
+      { "at": 0.66, "sun": "#7f97d6", "sky": "#0b1130", "haze": "#5b3f7a", "fog": "#141130", "elev": -10, "azim": 158, "sunI": 0.4, "ambI": 0.5,  "stars": 0.8,  "neon": 1.0,  "exposure": 1.16 },
+      { "at": 1.0,  "sun": "#93a9e6", "sky": "#05081c", "haze": "#3a2a58", "fog": "#080a1e", "elev": -18, "azim": 172, "sunI": 0.3, "ambI": 0.48, "stars": 1.0,  "neon": 1.0,  "exposure": 1.2 }
+    ]
+  },
+
+  "theme": {
+    "accent": "#ffb347",
+    "text": "#eef2f8",
+    "muted": "#8b93a6"
+  },
+
+  "hero": {
+    "eyebrow": "Portfolio · 2026",
+    "titleLines": ["EBRAHIM", "GAMDIWALA"],
+    "subtitle": "Software Engineer",
+    "blurb": "Everything I have built runs as a ride in this park. Scroll to board the coaster.",
+    "scrollHint": "scroll to board",
+    "stats": [
+      { "value": "9.70", "label": "SGPA" },
+      { "value": "5×", "label": "Hackathons won" },
+      { "value": "27k+", "label": "Teams outranked" }
+    ]
+  },
+
+  "stations": [
+    {
+      "id": "origin",
+      "kind": "intro",
+      "zone": "plaza",
+      "chapter": "00",
+      "nav": "Gate",
+      "label": "Station Plaza",
+      "title": "Now boarding",
+      "subtitle": "Mumbai, India",
+      "body": "Under the arch, past the turnstiles, into the front car. The chain takes it from here.",
+      "marquee": "NOW BOARDING",
+      "accent": "#ffb347",
+      "shots": ["crane", "drone"],
+      "scroll": { "enter": 0.0, "exit": 0.1 },
+      "items": []
+    },
+
+    {
+      "id": "education",
+      "kind": "education",
+      "zone": "gardens",
+      "chapter": "01",
+      "nav": "Education",
+      "label": "Foundation Gardens",
+      "title": "Where the ground was laid",
+      "subtitle": "Four years of fundamentals",
+      "body": "The first drop bottoms out here — formal lawns, still water, and a scoreboard that has not moved in six semesters.",
+      "marquee": "FOUNDATIONS",
+      "accent": "#5fe3c0",
+      "shots": ["onboard", "chase", "flank"],
+      "scroll": { "enter": 0.1, "exit": 0.24 },
+      "items": [
+        {
+          "title": "B.Tech, Computer Science & Engineering (Data Science)",
+          "org": "D. J. Sanghvi College of Engineering",
+          "period": "2023 — Present",
+          "place": "Mumbai, India",
+          "metric": "SGPA 9.70",
+          "metricNote": "till Semester 6",
+          "points": [
+            "Core: Data Structures & Algorithms, OOP, DBMS, Operating Systems.",
+            "Specialisation in Data Science — statistics, machine learning, applied NLP.",
+            "Consistently top-decile across six semesters."
+          ],
+          "tags": ["DSA", "OOP", "DBMS", "OS", "Machine Learning"],
+          "attraction": "scoreboard",
+          "poster": {
+            "kicker": "THE GROUNDWORKS",
+            "headline": "D. J. SANGHVI",
+            "ride": "COMPUTER SCIENCE · DATA SCIENCE",
+            "sub": "SIX SEMESTERS · TOP DECILE",
+            "stat": "9.70"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "projects",
+      "kind": "projects",
+      "zone": "attractionRow",
+      "chapter": "02",
+      "nav": "Rides",
+      "label": "Attraction Row",
+      "title": "The headline rides",
+      "subtitle": "Three platforms, shipped end to end",
+      "body": "Schema, model, pipeline, deploy. The track runs straight through all three of them.",
+      "marquee": "ATTRACTION ROW",
+      "accent": "#ff4d8d",
+      "shots": ["flank", "drone", "chase", "flank", "onboard", "drone"],
+      "scroll": { "enter": 0.24, "exit": 0.48 },
+      "items": [
+        {
+          "title": "StudyStack",
+          "subtitle": "AI-powered student financing & engagement platform",
+          "badge": "2nd Runner-Up · Poonawalla TenzorX National Hackathon 2026",
+          "badgeNote": "Top 3 of 27,000+ teams",
+          "period": "2026",
+          "points": [
+            "Full-stack platform streamlining student counselling, university discovery and education-loan workflows.",
+            "AI loan-intelligence module: eligibility estimation, personalised recommendations, ROI/EMI analysis.",
+            "Voice-based AI counselling with persistent conversation memory for automated profile extraction.",
+            "Agentic workflow engine for campaign generation and multi-channel outreach across email, WhatsApp and social.",
+            "Dual-pass RAG policy engine ingesting bank loan PDFs, extracting eligibility rules and validating LLM output through an independent faithfulness verifier."
+          ],
+          "tags": ["Next.js", "React", "TypeScript", "MongoDB", "Gemini API", "ElevenLabs", "Exa", "NextAuth", "Tailwind"],
+          "links": [],
+          "attraction": "dropTower",
+          "poster": {
+            "kicker": "NOW BOARDING",
+            "headline": "STUDYSTACK",
+            "ride": "THE LOAN DROP",
+            "sub": "TOP 3 OF 27,000 TEAMS",
+            "stat": "₹1,00,000"
+          }
+        },
+        {
+          "title": "OneFlow",
+          "subtitle": "Enterprise project-management ERP",
+          "period": "2025",
+          "points": [
+            "ERP platform managing projects, tasks, timesheets and financial workflows — sales orders, invoices, purchase orders.",
+            "Relational schema of 20+ models with NextAuth, JWT sessions and role-based access control.",
+            "CI/CD via GitHub Actions with optimised multi-stage Docker builds.",
+            "Deployed on Google Cloud Run — serverless auto-scaling, zero-downtime releases."
+          ],
+          "tags": ["Next.js", "PostgreSQL", "Prisma", "NextAuth", "TypeScript", "Docker", "GitHub Actions", "Cloud Run"],
+          "links": [],
+          "attraction": "machineHall",
+          "poster": {
+            "kicker": "RIDE THE PIPELINE",
+            "headline": "ONEFLOW",
+            "ride": "THE GRAND MACHINE",
+            "sub": "20+ MODELS · ZERO DOWNTIME",
+            "stat": "ERP"
+          }
+        },
+        {
+          "title": "ChainForecast CRM",
+          "subtitle": "Agentic sales forecasting with blockchain auditability",
+          "period": "2025",
+          "points": [
+            "Gemini-powered agents convert natural-language campaign briefs into executable multi-agent workflows for strategy, research, copy, creative and distribution.",
+            "Dependency-aware execution engine with persistent workflow state in MongoDB.",
+            "Random-Forest forecasting (200 trees) producing 28-day demand forecasts at <5% MAE on large retail time-series.",
+            "Customer intelligence via RFM analysis and K-Means clustering — VIP, Regular and At-Risk segments.",
+            "Ethereum + Merkle trees for tamper-proof audit trails over AI predictions."
+          ],
+          "tags": ["Python", "FastAPI", "scikit-learn", "Gemini API", "MongoDB Atlas", "React", "Solidity", "Web3.py", "Docker"],
+          "links": [],
+          "attraction": "ferrisWheel",
+          "poster": {
+            "kicker": "EVERY BLOCK VERIFIED",
+            "headline": "CHAINFORECAST",
+            "ride": "THE CHAIN WHEEL",
+            "sub": "28-DAY FORECASTS · 200 TREES",
+            "stat": "<5% MAE"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "experience",
+      "kind": "experience",
+      "zone": "works",
+      "chapter": "03",
+      "nav": "Work",
+      "label": "The Works",
+      "title": "Where it runs for real",
+      "subtitle": "Production, not prototypes",
+      "body": "Real users, real load, real consequences. You pass under both marquees at speed.",
+      "marquee": "THE WORKS",
+      "accent": "#4d9dff",
+      "shots": ["chase", "flank", "drone"],
+      "scroll": { "enter": 0.48, "exit": 0.63 },
+      "items": [
+        {
+          "title": "Software Engineer Apprentice",
+          "org": "Frappe Technologies",
+          "period": "06/2026 — Present",
+          "place": "Mumbai, India",
+          "current": true,
+          "points": [
+            "Hands-on training in the Frappe Framework and ERPNext — full-stack development, framework architecture and enterprise ERP workflows.",
+            "Building with Python, JavaScript, Redis and Docker across scalable backend services.",
+            "Enterprise practice: debugging, testing and deployment in a production-grade environment."
+          ],
+          "tags": ["Python", "JavaScript", "Frappe", "ERPNext", "Redis", "Docker"],
+          "attraction": "mainStage",
+          "poster": {
+            "kicker": "MAIN STAGE · LIVE NOW",
+            "headline": "FRAPPE",
+            "ride": "SOFTWARE ENGINEER APPRENTICE",
+            "sub": "FRAPPE FRAMEWORK · ERPNEXT",
+            "stat": "NOW"
+          }
+        },
+        {
+          "title": "AI & Software Development Intern",
+          "org": "Digikendr",
+          "period": "10/2025 — 02/2026",
+          "place": "Mumbai, India",
+          "points": [
+            "Built AI-powered products on MongoDB, Firebase, Gemini and OpenAI APIs; deployed to AWS EC2 with S3 image storage and Secrets Manager.",
+            "End-to-end Meta Ads optimisation pipeline — Shopify/e-commerce scraping, LLM ad-copy generation and performance analytics.",
+            "AI-driven targeting and creative optimisation, lifting conversion rates ~20–35% and campaign revenue."
+          ],
+          "tags": ["MongoDB", "Firebase", "Gemini", "OpenAI", "AWS EC2", "S3", "Secrets Manager"],
+          "attraction": "signalTower",
+          "poster": {
+            "kicker": "BROADCASTING NIGHTLY",
+            "headline": "DIGIKENDR",
+            "ride": "THE SIGNAL TOWER",
+            "sub": "META ADS PIPELINE · LLM COPY",
+            "stat": "+35%"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "skills",
+      "kind": "skills",
+      "zone": "midway",
+      "chapter": "04",
+      "nav": "Midway",
+      "label": "The Midway",
+      "title": "The whole toolset",
+      "subtitle": "Stall after stall after stall",
+      "body": "Low, fast and tight through the arcade. Every sign overhead is something that has shipped.",
+      "marquee": "THE MIDWAY",
+      "accent": "#ffd54d",
+      "shots": ["onboard", "flank", "chase"],
+      "scroll": { "enter": 0.63, "exit": 0.75 },
+      "items": [
+        { "title": "Languages", "tags": ["Python", "C++", "Java", "C", "SQL", "TypeScript", "JavaScript"], "attraction": "stall" },
+        { "title": "Core CS", "tags": ["DSA", "OOP", "DBMS", "Operating Systems"], "attraction": "stall" },
+        { "title": "Web", "tags": ["React.js", "Next.js", "Redux Toolkit", "Node.js", "Express.js", "FastAPI", "Flask", "Jinja2", "HTML5", "CSS3"], "attraction": "stall" },
+        { "title": "Data", "tags": ["MongoDB", "PostgreSQL", "Prisma", "Redis"], "attraction": "stall" },
+        { "title": "ML & AI", "tags": ["scikit-learn", "TensorFlow", "Deep Learning", "NLP", "BERT", "Transformers", "LangChain", "LangGraph", "Ollama"], "attraction": "stall" },
+        { "title": "Cloud & DevOps", "tags": ["GCP", "AWS", "Docker", "Kubernetes", "Terraform", "Ansible", "Jenkins", "Nginx", "GitHub Actions", "GitLab", "CI/CD"], "attraction": "stall" }
+      ]
+    },
+
+    {
+      "id": "awards",
+      "kind": "awards",
+      "zone": "pyro",
+      "chapter": "05",
+      "nav": "Prizes",
+      "label": "Pyro Field",
+      "title": "Won under pressure",
+      "subtitle": "Thirty-six hours, live demo at the end",
+      "body": "Open ground, airtime hills, and every trophy lit from below. The sky goes off over this one.",
+      "marquee": "PRIZE ROW",
+      "accent": "#ff5f45",
+      "shots": ["drone", "chase", "flank"],
+      "scroll": { "enter": 0.75, "exit": 0.88 },
+      "items": [
+        {
+          "title": "Poonawalla TenzorX National AI Hackathon 2026",
+          "result": "2nd Runner-Up",
+          "note": "Top 3 of 27,000+ teams · ₹1,00,000 prize",
+          "org": "Poonawalla Fincorp",
+          "attraction": "plinth",
+          "poster": { "headline": "TENZORX", "sub": "2ND RUNNER-UP", "stat": "27,000+" }
+        },
+        {
+          "title": "SPIT Hackathon '26",
+          "result": "National Winner",
+          "note": "1000+ teams",
+          "org": "CSI, Sardar Patel Institute of Technology",
+          "attraction": "plinth",
+          "poster": { "headline": "SPIT '26", "sub": "NATIONAL WINNER", "stat": "1000+" }
+        },
+        {
+          "title": "Code It Ralph",
+          "result": "Winner",
+          "org": "CSI, Sardar Patel Institute of Technology",
+          "attraction": "plinth",
+          "poster": { "headline": "CODE IT RALPH", "sub": "WINNER" }
+        },
+        {
+          "title": "Techvanza '26",
+          "result": "Winner",
+          "org": "Usha Pravin Gandhi College",
+          "attraction": "plinth",
+          "poster": { "headline": "TECHVANZA", "sub": "WINNER" }
+        },
+        {
+          "title": "National Healthcare Ideathon",
+          "result": "Winner",
+          "org": "Enactus KJSCE",
+          "attraction": "plinth",
+          "poster": { "headline": "IDEATHON", "sub": "NATIONAL WINNER" }
+        }
+      ]
+    },
+
+    {
+      "id": "contact",
+      "kind": "contact",
+      "zone": "brakeRun",
+      "chapter": "06",
+      "nav": "Exit",
+      "label": "Brake Run",
+      "title": "Ride again?",
+      "subtitle": "The car pulls back into the station",
+      "body": "Open to internships, full-time roles and anything with a hard problem in it.",
+      "marquee": "RIDE AGAIN",
+      "accent": "#b47dff",
+      "shots": ["flank", "chase", "crane"],
+      "scroll": { "enter": 0.88, "exit": 0.965 },
+      "items": []
+    }
+  ]
+}

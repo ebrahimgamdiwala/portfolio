@@ -60,6 +60,22 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
     });
     lenisRef.current = lenis;
 
+    // Lenis owns the scroll position outright and `eased` is damped over ~50
+    // frames, so there is no way to park the ride at an exact point from
+    // outside without a handle on both. Development only — it is what the
+    // screenshot harness drives.
+    if (process.env.NODE_ENV === "development") {
+      (window as unknown as { __ride?: unknown }).__ride = {
+        lenis,
+        seek(p: number) {
+          const limit = document.documentElement.scrollHeight - window.innerHeight;
+          lenis.scrollTo(p * limit, { immediate: true, force: true });
+          progress.current = p;
+          eased.current = p;
+        },
+      };
+    }
+
     // The coaster is a closed circuit: the rail under the camera at the very
     // bottom of the page is the same rail as at RIDE_START. So when the rider
     // runs off the end we put them straight back there and the lap continues

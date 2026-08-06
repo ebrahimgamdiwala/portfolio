@@ -53,8 +53,11 @@ function StationPanel({ station }: { station: Station }) {
             <span className="font-mono text-[10px] uppercase tracking-widest2 text-white/50">
               {station.label}
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-widest2 text-white/30">
-              {station.weather}
+            <span
+              className="font-mono text-[10px] uppercase tracking-widest2"
+              style={{ color: station.accent }}
+            >
+              {station.marquee}
             </span>
           </div>
 

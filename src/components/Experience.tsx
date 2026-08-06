@@ -2,26 +2,26 @@
 
 import dynamic from "next/dynamic";
 import { ScrollProvider } from "@/lib/scroll/ScrollProvider";
-import { useWorld } from "@/lib/useWorld";
+import { usePark } from "@/lib/usePark";
 import { Navbar } from "./ui/Navbar";
 import { Hero } from "./ui/Hero";
 import { StationLayer } from "./ui/StationLayer";
 import { Loader } from "./ui/Loader";
 
-const WorldCanvas = dynamic(
-  () => import("./world/WorldCanvas").then((m) => m.WorldCanvas),
+const ParkCanvas = dynamic(
+  () => import("./park/ParkCanvas").then((m) => m.ParkCanvas),
   { ssr: false },
 );
 
-/** Total scroll runway. Roughly one viewport per station, plus the landing. */
-const SCROLL_VH = 820;
+/** Total scroll runway. Roughly one viewport per chapter, plus the landing. */
+const SCROLL_VH = 1300;
 
 function Stage() {
-  const world = useWorld();
+  const world = usePark();
 
   return (
     <>
-      <WorldCanvas world={world} />
+      <ParkCanvas world={world} />
       <Navbar />
       <Hero />
       <StationLayer />
