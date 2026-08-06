@@ -53,7 +53,7 @@ export function ExploreCamera() {
   const vel = useRef(new Vector3());
   const yaw = useRef(0);
   const pitch = useRef(-0.04);
-  const keys = useRef<Record<string, boolean>>({});
+  const keys = useRef<Set<string>>(new Set());
   const drag = useRef<{ on: boolean; x: number; y: number }>({ on: false, x: 0, y: 0 });
   /** 0 = free, 1 = fully parked at the selected marker's viewpoint. */
   const lock = useRef(0);
@@ -81,19 +81,16 @@ export function ExploreCamera() {
     };
 
     const onKey = (e: KeyboardEvent, down: boolean) => {
-      const rawKey = (e.key || "").toLowerCase();
-      const codeKey = (e.code || "").toLowerCase();
+      const code = (e.code || "").toLowerCase();
 
-      keys.current[rawKey] = down;
-      keys.current[codeKey] = down;
+      // Map physical key code to game action
+      if (code === "keyw" || code === "arrowup")    { down ? keys.current.add("w") : keys.current.delete("w"); }
+      if (code === "keys" || code === "arrowdown")  { down ? keys.current.add("s") : keys.current.delete("s"); }
+      if (code === "keya" || code === "arrowleft")  { down ? keys.current.add("a") : keys.current.delete("a"); }
+      if (code === "keyd" || code === "arrowright") { down ? keys.current.add("d") : keys.current.delete("d"); }
+      if (code === "shiftleft" || code === "shiftright") { down ? keys.current.add("shift") : keys.current.delete("shift"); }
 
-      if (rawKey === "w" || codeKey === "keyw" || rawKey === "arrowup" || codeKey === "arrowup") keys.current["w"] = down;
-      if (rawKey === "s" || codeKey === "keys" || rawKey === "arrowdown" || codeKey === "arrowdown") keys.current["s"] = down;
-      if (rawKey === "a" || codeKey === "keya" || rawKey === "arrowleft" || codeKey === "arrowleft") keys.current["a"] = down;
-      if (rawKey === "d" || codeKey === "keyd" || rawKey === "arrowright" || codeKey === "arrowright") keys.current["d"] = down;
-      if (rawKey === "shift" || codeKey === "shiftleft" || codeKey === "shiftright") keys.current["shift"] = down;
-
-      if (down && (rawKey === "escape" || codeKey === "escape")) {
+      if (down && code === "escape") {
         explore.select(null);
         explore.ride(null);
         tryUnlock();
@@ -136,11 +133,11 @@ export function ExploreCamera() {
     const pUp = () => void (drag.current.on = false);
     const onLockChange = () => explore.setLocked(isLocked());
     const onBlur = () => {
-      keys.current = {};
+      keys.current.clear();
     };
 
-    window.addEventListener("keydown", kDown);
-    window.addEventListener("keyup", kUp);
+    document.addEventListener("keydown", kDown, { capture: true });
+    document.addEventListener("keyup", kUp, { capture: true });
     window.addEventListener("blur", onBlur);
     el.addEventListener("click", onClick);
     el.addEventListener("pointerdown", pDown);
@@ -149,8 +146,8 @@ export function ExploreCamera() {
     document.addEventListener("pointerlockchange", onLockChange);
 
     return () => {
-      window.removeEventListener("keydown", kDown);
-      window.removeEventListener("keyup", kUp);
+      document.removeEventListener("keydown", kDown, { capture: true });
+      document.removeEventListener("keyup", kUp, { capture: true });
       window.removeEventListener("blur", onBlur);
       el.removeEventListener("click", onClick);
       el.removeEventListener("pointerdown", pDown);
@@ -158,7 +155,7 @@ export function ExploreCamera() {
       window.removeEventListener("mousemove", onMove);
       document.removeEventListener("pointerlockchange", onLockChange);
       tryUnlock();
-      keys.current = {};
+      keys.current.clear();
       explore.setLocked(false);
     };
   }, [mode, gl]);
@@ -273,10 +270,10 @@ export function ExploreCamera() {
 
     let inputFwd = 0;
     let inputSide = 0;
-    if (keys.current["w"]) inputFwd += 1;
-    if (keys.current["s"]) inputFwd -= 1;
-    if (keys.current["d"]) inputSide += 1;
-    if (keys.current["a"]) inputSide -= 1;
+    if (keys.current.has("w")) inputFwd += 1;
+    if (keys.current.has("s")) inputFwd -= 1;
+    if (keys.current.has("d")) inputSide += 1;
+    if (keys.current.has("a")) inputSide -= 1;
 
     const hasInput = inputFwd !== 0 || inputSide !== 0;
 
@@ -293,7 +290,7 @@ export function ExploreCamera() {
     }
 
     if (lock.current < 0.995) {
-      const isShift = keys.current["shift"] || keys.current["shiftleft"] || keys.current["shiftright"];
+      const isShift = keys.current.has("shift");
       const speed = isShift ? RUN : WALK;
 
       let targetX = 0;
