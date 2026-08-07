@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   AdditiveBlending,
@@ -11,10 +11,11 @@ import {
   Quaternion,
   Vector3,
   type InstancedMesh,
+  type MeshStandardMaterial,
 } from "three";
 import type { PropSet } from "@/lib/park/props";
 import { paintedSteel } from "@/lib/park/textures";
-import { HUMAN_HEIGHT, humanBody, humanSkin } from "@/lib/park/human";
+import { applyWalkCycle, HUMAN_HEIGHT, humanBody, humanSkin } from "@/lib/park/human";
 import { Rng } from "@/lib/park/rand";
 import { Pieces } from "./primitives/Pieces";
 import { useQuality } from "./Quality";
@@ -237,25 +238,55 @@ function Crowd({ set }: { set: PropSet }) {
   const q = useQuality();
   const bodies = useRef<InstancedMesh>(null);
   const skins = useRef<InstancedMesh>(null);
+  /** One clock drives both halves, so hands stay with their arms. */
+  const clock = useRef({ value: 0 });
+
+  const patchWalk = useCallback((mat: MeshStandardMaterial | null) => {
+    if (!mat || mat.userData.walkPatched) return;
+    mat.userData.walkPatched = true;
+    applyWalkCycle(mat, clock.current);
+  }, []);
 
   const people = useMemo(() => {
     const total = Math.floor((set.crowd.length / 4) * q.crowd);
     const rng = new Rng(31337);
-    return Array.from({ length: total }, (_, i) => ({
-      x: set.crowd[i * 4],
-      z: set.crowd[i * 4 + 1],
-      // Scaled up so visitors read prominently relative to the park's large structures.
-      h: (set.crowd[i * 4 + 2] / HUMAN_HEIGHT) * 2.2,
-      phase: set.crowd[i * 4 + 3],
-      // a quarter of them are going somewhere
-      walks: rng.chance(0.26),
-      radius: rng.range(4, 16),
-      speed: rng.range(0.09, 0.26) * rng.sign(),
-      facing: rng.range(0, Math.PI * 2),
-      cloth: CLOTHES[rng.int(CLOTHES.length)],
-      skin: SKIN[rng.int(SKIN.length)],
-    }));
+    return Array.from({ length: total }, (_, i) => {
+      const hx = set.crowd[i * 4];
+      const hz = set.crowd[i * 4 + 1];
+      return {
+        /** Where they hang about. */
+        homeX: hx,
+        homeZ: hz,
+        // Scaled up so visitors read prominently relative to the park's large structures.
+        h: (set.crowd[i * 4 + 2] / HUMAN_HEIGHT) * 2.2,
+        phase: set.crowd[i * 4 + 3],
+        roam: rng.range(6, 22),
+        speed: rng.range(1.9, 3.6),
+        /** Live state. */
+        x: hx,
+        z: hz,
+        tx: hx,
+        tz: hz,
+        heading: rng.range(0, Math.PI * 2),
+        gait: 0,
+        /** Stand still until this clock time. */
+        waitUntil: rng.range(0, 6),
+        cloth: CLOTHES[rng.int(CLOTHES.length)],
+        skin: SKIN[rng.int(SKIN.length)],
+      };
+    });
   }, [set, q.crowd]);
+
+  /** Per-instance walk phase and gait, shared by both halves of the body. */
+  const gaitAttrs = useMemo(() => {
+    const phase = new Float32Array(people.length);
+    const gait = new Float32Array(people.length);
+    people.forEach((p, i) => (phase[i] = p.phase * 3.7));
+    return {
+      phase: new InstancedBufferAttribute(phase, 1),
+      gait: new InstancedBufferAttribute(gait, 1),
+    };
+  }, [people]);
 
   useLayoutEffect(() => {
     const cloth = new Float32Array(people.length * 3);
@@ -265,45 +296,79 @@ function Crowd({ set }: { set: PropSet }) {
       c.set(p.cloth).toArray(cloth, i * 3);
       c.set(p.skin).toArray(flesh, i * 3);
     });
-    if (bodies.current) {
-      bodies.current.instanceColor = new InstancedBufferAttribute(cloth, 3);
-      bodies.current.instanceColor.needsUpdate = true;
+    for (const [mesh, colors] of [
+      [bodies.current, cloth],
+      [skins.current, flesh],
+    ] as const) {
+      if (!mesh) continue;
+      mesh.instanceColor = new InstancedBufferAttribute(colors, 3);
+      mesh.instanceColor.needsUpdate = true;
+      // the same two attributes drive both meshes, so a hand swings with its arm
+      mesh.geometry.setAttribute("aPhase", gaitAttrs.phase);
+      mesh.geometry.setAttribute("aGait", gaitAttrs.gait);
     }
-    if (skins.current) {
-      skins.current.instanceColor = new InstancedBufferAttribute(flesh, 3);
-      skins.current.instanceColor.needsUpdate = true;
-    }
-  }, [people]);
+  }, [people, gaitAttrs]);
 
-  useFrame((state) => {
+  useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
+    const step = Math.min(dt, 0.05);
+    if (clock.current) clock.current.value = t;
+
+    const gait = gaitAttrs.gait.array as Float32Array;
+
     for (let i = 0; i < people.length; i++) {
       const p = people[i];
-      let x = p.x;
-      let z = p.z;
-      let face = p.facing;
 
-      if (p.walks) {
-        // a slow loop around where they started, facing the way they are going
-        const a = p.phase + t * p.speed;
-        x += Math.cos(a) * p.radius;
-        z += Math.sin(a) * p.radius;
-        face = -a + (p.speed > 0 ? -Math.PI / 2 : Math.PI / 2);
+      // Wander: walk to a spot, stand about for a while, pick another. Real
+      // people do not orbit a fixed point at a constant rate, which is exactly
+      // what a sine-driven crowd looks like it is doing.
+      const waiting = t < p.waitUntil;
+      let dx = p.tx - p.x;
+      let dz = p.tz - p.z;
+      let dist = Math.hypot(dx, dz);
+
+      if (!waiting && dist < 0.6) {
+        // arrived — loiter, then choose somewhere new within the home patch
+        p.waitUntil = t + 2 + ((i * 97) % 11);
+        const a = (i * 2.399 + t) % (Math.PI * 2);
+        const r = p.roam * (0.35 + (((i * 37) % 100) / 100) * 0.65);
+        p.tx = p.homeX + Math.cos(a) * r;
+        p.tz = p.homeZ + Math.sin(a) * r;
+        dx = p.tx - p.x;
+        dz = p.tz - p.z;
+        dist = Math.hypot(dx, dz) || 1;
       }
 
-      // walkers bob on their stride; standers shift their weight
-      const bob = p.walks
-        ? Math.abs(Math.sin(t * 3.1 + p.phase)) * 0.035
-        : Math.sin(t * 0.9 + p.phase) * 0.012;
-      const lean = p.walks ? 0 : Math.sin(t * 0.55 + p.phase) * 0.02;
+      const moving = !waiting && dist > 0.6;
+      if (moving) {
+        const k = (p.speed * step) / dist;
+        p.x += dx * k;
+        p.z += dz * k;
+        // ease the turn rather than snapping to the new bearing
+        const want = Math.atan2(dx, dz);
+        let delta = want - p.heading;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        p.heading += delta * Math.min(1, step * 4);
+      }
 
-      q4.setFromAxisAngle(UP, face + lean);
-      v3.set(x, bob, z);
+      // gait feeds the vertex shader's stride, so it has to ramp, not switch
+      p.gait += ((moving ? 1 : 0) - p.gait) * Math.min(1, step * 5);
+      gait[i] = p.gait;
+
+      // a small vertical bob locked to the stride the shader is running
+      const bob = Math.abs(Math.sin(t * 2.7 + p.phase * 3.7)) * 0.045 * p.gait;
+      const sway = Math.sin(t * 0.7 + p.phase) * 0.022 * (1 - p.gait);
+
+      q4.setFromAxisAngle(UP, p.heading + sway);
+      v3.set(p.x, bob * p.h, p.z);
       scale.setScalar(p.h);
       m4.compose(v3, q4, scale);
       bodies.current?.setMatrixAt(i, m4);
       skins.current?.setMatrixAt(i, m4);
     }
+
+    gaitAttrs.gait.needsUpdate = true;
     if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true;
     if (skins.current) skins.current.instanceMatrix.needsUpdate = true;
   });
@@ -317,14 +382,14 @@ function Crowd({ set }: { set: PropSet }) {
         args={[humanBody(), undefined, people.length]}
         frustumCulled={false}
       >
-        <meshStandardMaterial roughness={0.82} />
+        <meshStandardMaterial ref={patchWalk} roughness={0.82} />
       </instancedMesh>
       <instancedMesh
         ref={skins}
         args={[humanSkin(), undefined, people.length]}
         frustumCulled={false}
       >
-        <meshStandardMaterial roughness={0.66} />
+        <meshStandardMaterial ref={patchWalk} roughness={0.66} />
       </instancedMesh>
     </group>
   );

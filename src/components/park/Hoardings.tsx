@@ -86,7 +86,7 @@ function Board({ h }: { h: Hoarding }) {
     // crossfade is the park switching on around you
     const neon = sky.current.neon;
     if (face.current) face.current.emissiveIntensity = 0.18 + neon * 1.05;
-    for (const m of beams.current) if (m) m.opacity = neon * 0.2;
+    for (const m of beams.current) if (m) m.opacity = neon * 0.13;
   });
 
   const hh = BOARD_H / 2;
@@ -106,6 +106,15 @@ function Board({ h }: { h: Hoarding }) {
         />
       </mesh>
 
+      {/* The back of the board. Without it the face — a single-sided plane —
+          vanishes from behind and the hoarding reads as an empty frame, which
+          is exactly what a hoarding approached from the wrong side should not
+          do. Real ones are a painted steel tray. */}
+      <mesh position={[0, 0, -0.22]} rotation={[0, Math.PI, 0]} receiveShadow>
+        <planeGeometry args={[BOARD_W + 0.6, BOARD_H + 0.6]} />
+        <meshStandardMaterial color="#23262e" roughness={0.82} metalness={0.45} />
+      </mesh>
+
       {LAMPS.map((f, i) => (
         <group key={f} position={[f * BOARD_W, -hh - 1.9, 2.4]}>
           {/* lamp head */}
@@ -117,9 +126,11 @@ function Board({ h }: { h: Hoarding }) {
             <sphereGeometry args={[0.34, 10, 8]} />
             <meshBasicMaterial color="#fff0cf" toneMapped={false} />
           </mesh>
-          {/* the beam it throws up the board */}
-          <mesh position={[0, hh + 1.1, -1.5]} rotation={[Math.PI - 1.16, 0, 0]}>
-            <coneGeometry args={[3.4, BOARD_H + 3, 16, 1, true]} />
+          {/* The shaft of light. Narrow, and stopped well short of the face —
+              a wide cone aimed at the board punches straight through it, and a
+              beam cutting across its own poster is worse than no beam. */}
+          <mesh position={[0, 4.6, -0.4]} rotation={[Math.PI - 0.1, 0, 0]}>
+            <coneGeometry args={[1.25, 9, 12, 1, true]} />
             <meshBasicMaterial
               ref={(m) => void (beams.current[i] = m)}
               color="#ffe6bb"

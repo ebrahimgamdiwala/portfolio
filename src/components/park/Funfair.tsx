@@ -16,6 +16,7 @@ import type { Piece } from "@/lib/park/coaster";
 import { FURNITURE, type Slot } from "@/lib/park/layout";
 import { paintedSteel, stripes } from "@/lib/park/textures";
 import { Rng } from "@/lib/park/rand";
+import { horseCoat, horseTack } from "@/lib/park/horse";
 import { neonText } from "@/lib/park/sign";
 import { explore, seats } from "@/lib/explore/store";
 import { Pieces } from "./primitives/Pieces";
@@ -132,21 +133,25 @@ function Carousel({ slot, seed, index }: { slot: Slot; seed: number; index: numb
                 position={[x, 3.1, z]}
                 rotation={[0, -a, 0]}
               >
-                {/* a horse, honestly rendered as a horse-shaped suggestion */}
-                <mesh castShadow>
-                  <boxGeometry args={[2.4, 1.2, 0.9]} />
-                  <meshStandardMaterial color={CANDY[(i + seed) % CANDY.length]} roughness={0.4} />
+                {/* Coat and tack are separate meshes so the mane, saddle and
+                    hooves keep their own materials — a single-colour horse
+                    reads as a lump whatever shape it is. */}
+                <mesh geometry={horseCoat()} castShadow>
+                  <meshPhysicalMaterial
+                    color={CANDY[(i + seed) % CANDY.length]}
+                    roughness={0.34}
+                    metalness={0.1}
+                    clearcoat={0.6}
+                    clearcoatRoughness={0.3}
+                  />
                 </mesh>
-                <mesh position={[0.95, 0.85, 0]} rotation={[0, 0, 0.5]} castShadow>
-                  <boxGeometry args={[1.1, 0.7, 0.6]} />
-                  <meshStandardMaterial color={CANDY[(i + seed) % CANDY.length]} roughness={0.4} />
+                <mesh geometry={horseTack()} castShadow>
+                  <meshStandardMaterial
+                    color={i % 2 ? "#f4e7c8" : "#c9a227"}
+                    roughness={0.42}
+                    metalness={0.55}
+                  />
                 </mesh>
-                {[-0.7, 0.7].map((dx) => (
-                  <mesh key={dx} position={[dx, -1, 0]}>
-                    <boxGeometry args={[0.3, 1.4, 0.3]} />
-                    <meshStandardMaterial color="#f0e6d2" roughness={0.5} />
-                  </mesh>
-                ))}
               </group>
             </group>
           );

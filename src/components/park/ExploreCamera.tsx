@@ -28,7 +28,8 @@ const RUN = 72;
 const BOUND = PARK.fenceRadius - 14;
 /** How far off-centre a marker can be and still count as targeted. */
 const AIM_COS = Math.cos(0.16);
-const AIM_RANGE = 260;
+/** Matched to the marker cull distance — you cannot target what you cannot see. */
+const AIM_RANGE = 95;
 
 const aim = new Vector3();
 const want = new Vector3();
@@ -38,6 +39,26 @@ const fwd = new Vector3();
 const toMarker = new Vector3();
 const UP = new Vector3(0, 1, 0);
 const pushed = { x: 0, z: 0 };
+const dir = new Vector3();
+
+/**
+ * Swings an aim point about its own eye position by a yaw and pitch offset.
+ * Lets a ride frame the shot it wants while the rider still turns their head.
+ */
+function freeLook(eye: Vector3, target: Vector3, dYaw: number, dPitch: number) {
+  dir.subVectors(target, eye);
+  const len = dir.length() || 1;
+  dir.divideScalar(len);
+
+  const y = Math.atan2(dir.x, dir.z) + dYaw;
+  const p = MathUtils.clamp(Math.asin(MathUtils.clamp(dir.y, -1, 1)) + dPitch, -1.2, 1.2);
+  const c = Math.cos(p);
+  target.set(
+    eye.x + Math.sin(y) * c * len,
+    eye.y + Math.sin(p) * len,
+    eye.z + Math.cos(y) * c * len,
+  );
+}
 
 /** Live position, read by the map overlay. Deliberately not React state. */
 export const walker = { x: 0, z: 180, yaw: 0 };
@@ -59,6 +80,10 @@ export function ExploreCamera() {
   /** 0 = free, 1 = fully parked at the selected marker's viewpoint. */
   const lock = useRef(0);
   const hovered = useRef<string | null>(null);
+  /** Which ride the camera is currently strapped into. */
+  const boarded = useRef<string | null>(null);
+  /** Walking heading, parked while strapped into a ride. */
+  const stowed = useRef({ yaw: 0, pitch: 0 });
 
   /* ── input ─────────────────────────────────────────────────────────────── */
 
@@ -108,7 +133,7 @@ export function ExploreCamera() {
         }
         return;
       }
-      if (!explore.state.selected) tryLock();
+      if (!explore.state.selected || explore.state.riding) tryLock();
     };
 
     const onMove = (e: MouseEvent) => {
@@ -241,20 +266,30 @@ export function ExploreCamera() {
           cam.position.z + fwdZ * 16,
         );
       } else {
+        // Drop tower and big wheel. Both publish a seat you are actually
+        // sitting in, so sit in it — offsetting outward from the seat is what
+        // made the wheel feel like dangling off the rim rather than riding in
+        // a cabin.
         const outX = Math.sin(seat.yaw);
         const outZ = Math.cos(seat.yaw);
-        want.set(
-          seat.pos.x + outX * 8,
-          seat.pos.y - 0.8,
-          seat.pos.z + outZ * 8,
-        );
-        cam.position.lerp(want, 0.22);
+        cam.position.lerp(seat.pos, 0.3);
         aim.set(
           cam.position.x + outX * 20,
-          cam.position.y - 3 + Math.sin(state.clock.elapsedTime * 0.4) * 1.5,
+          cam.position.y - 2.5,
           cam.position.z + outZ * 20,
         );
       }
+
+      // On boarding, park the walking heading and hand the mouse over as a
+      // free-look offset on top of whatever framing the ride just set. Being
+      // strapped into a seat should not also strap down your neck.
+      if (boarded.current !== riding) {
+        boarded.current = riding;
+        stowed.current = { yaw: yaw.current, pitch: pitch.current };
+        yaw.current = 0;
+        pitch.current = 0;
+      }
+      freeLook(cam.position, aim, yaw.current, pitch.current);
 
       cam.up.set(0, 1, 0);
       cam.lookAt(aim);
@@ -265,6 +300,13 @@ export function ExploreCamera() {
       walker.z = seat.pos.z;
       walker.yaw = seat.yaw;
       return;
+    }
+
+    // stepped off — give the walker back the heading they had before boarding
+    if (boarded.current) {
+      boarded.current = null;
+      yaw.current = stowed.current.yaw;
+      pitch.current = stowed.current.pitch;
     }
 
     /* ── parked at a marker, or walking ──────────────────────────────────── */

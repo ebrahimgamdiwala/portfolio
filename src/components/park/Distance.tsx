@@ -92,8 +92,9 @@ function ridge(radius: number, height: number, seed: number, segments = 520) {
     cols[v] = 1;
     cols[v + 1] = 1;
     cols[v + 2] = 1;
+    // summits lose contrast into the sky; bases stay solid
     const fadeUp = Math.min(1, h / (height * 0.95));
-    const pale = 1 + fadeUp * 2.6;
+    const pale = 0.72 + fadeUp * 0.85;
     cols[v + 3] = pale;
     cols[v + 4] = pale;
     cols[v + 5] = pale;
@@ -231,27 +232,32 @@ function Haze({ radius, height, opacity }: { radius: number; height: number; opa
  * well not be modelled — the park should feel like it is somewhere.
  */
 export function Distance() {
-  const near = useMemo(() => ridge(1080, 300, 4021), []);
-  const mid = useMemo(() => ridge(1520, 400, 5563), []);
-  const far = useMemo(() => ridge(2000, 520, 9137), []);
+  const near = useMemo(() => ridge(850, 300, 4021), []);
+  const mid = useMemo(() => ridge(1300, 400, 5563), []);
+  const far = useMemo(() => ridge(1800, 520, 9137), []);
 
   return (
     <group>
+      {/* Ridge colours are lifted well off black on purpose. These sit behind
+          three stacked haze layers, and a near-black range loses to even a
+          little atmosphere — which is exactly how the mountains vanished. */}
       <mesh geometry={far} frustumCulled={false} renderOrder={-9}>
-        <meshBasicMaterial color="#1b2040" vertexColors side={DoubleSide} toneMapped={false} />
+        <meshBasicMaterial color="#4a4b76" vertexColors side={DoubleSide} toneMapped={false} />
       </mesh>
-      <Haze radius={1880} height={520} opacity={0.55} />
+      <Haze radius={1700} height={520} opacity={0.18} />
 
       <mesh geometry={mid} frustumCulled={false} renderOrder={-8}>
-        <meshBasicMaterial color="#141834" vertexColors side={DoubleSide} toneMapped={false} />
+        <meshBasicMaterial color="#3a3a63" vertexColors side={DoubleSide} toneMapped={false} />
       </mesh>
       <City />
-      <Haze radius={1420} height={400} opacity={0.45} />
+      <Haze radius={1220} height={400} opacity={0.14} />
 
       <mesh geometry={near} frustumCulled={false} renderOrder={-7}>
-        <meshBasicMaterial color="#0d1024" vertexColors side={DoubleSide} toneMapped={false} />
+        <meshBasicMaterial color="#2b2b4d" vertexColors side={DoubleSide} toneMapped={false} />
       </mesh>
-      <Haze radius={1010} height={300} opacity={0.34} />
+      {/* the nearest band stays lightest — it is the one between you and
+          everything else, so it doubles every layer behind it */}
+      <Haze radius={800} height={300} opacity={0.1} />
     </group>
   );
 }

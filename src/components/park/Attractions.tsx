@@ -15,6 +15,13 @@ import {
 } from "three";
 import { posterOf, stations, type AttractionKind, type StationItem } from "@/lib/content";
 import { explore, seats } from "@/lib/explore/store";
+import {
+  CABIN_EYE,
+  CABIN_FLOOR,
+  gondolaGlass,
+  gondolaShell,
+  gondolaTrim,
+} from "@/lib/park/gondola";
 import { beam, box, placer } from "@/lib/park/build";
 import type { Piece } from "@/lib/park/coaster";
 import { SLOTS, type Slot } from "@/lib/park/layout";
@@ -172,10 +179,18 @@ const mtx = new Matrix4();
 const vec = new Vector3();
 const qut = new Quaternion();
 const scl = new Vector3(1, 1, 1);
+const tilt = new Quaternion();
+const hang = new Quaternion();
+const hubOffset = new Vector3();
+const FWD = new Vector3(0, 0, 1);
+const UP_AXIS = new Vector3(0, 1, 0);
+const IDENT_Q = new Quaternion();
 
 function FerrisWheel({ slot, accent, item }: { slot: Slot; accent: string; item: StationItem }) {
   const wheel = useRef<Group>(null);
   const cabins = useRef<InstancedMesh>(null);
+  const glass = useRef<InstancedMesh>(null);
+  const trim = useRef<InstancedMesh>(null);
   const glows = useRef<InstancedMesh>(null);
 
   const spokes = useMemo(() => {
@@ -241,38 +256,52 @@ function FerrisWheel({ slot, accent, item }: { slot: Slot; accent: string; item:
     if (!w) return;
     w.rotation.z += dt * 0.052;
 
-    // Gondolas hang level no matter where the wheel is, so in world space they
-    // only ever translate — which means the whole ring is one instanced draw.
+    // THE CABINS ARE LOCAL. These instanced meshes are children of the group
+    // that already carries the wheel's position and rotation, so composing
+    // their matrices in world space applies that transform twice and flings
+    // every gondola hundreds of metres off into the dark — which is exactly
+    // why the wheel has been running bare.
     const spin = w.rotation.z;
     const yaw = slot.rot;
-    qut.setFromAxisAngle(new Vector3(0, 1, 0), yaw);
     const hubY = R_WHEEL + 9;
     const pulse = state.clock.elapsedTime * 2.4;
 
     for (let i = 0; i < GONDOLAS; i++) {
       const a = (i / GONDOLAS) * Math.PI * 2 + spin;
-      vec
-        .set(Math.cos(a) * R_WHEEL, Math.sin(a) * R_WHEEL + hubY, 0)
-        .applyQuaternion(qut)
-        .add(new Vector3(slot.x, 0, slot.z));
-      vec.y -= 3.0;
-      mtx.compose(vec, qut, scl);
+      // the pivot on the rim — the cabin geometry hangs below its own origin
+      vec.set(Math.cos(a) * R_WHEEL, Math.sin(a) * R_WHEEL + hubY, 0);
+
+      // a gondola hangs, so it lags the wheel and settles — a rigid one reads
+      // as bolted on
+      const swing = Math.sin(state.clock.elapsedTime * 0.9 + i * 1.3) * 0.035 - 0.052;
+      tilt.setFromAxisAngle(FWD, swing);
+
+      mtx.compose(vec, tilt, scl);
       cabins.current?.setMatrixAt(i, mtx);
-      // gondola zero is the one you get into
+      glass.current?.setMatrixAt(i, mtx);
+      trim.current?.setMatrixAt(i, mtx);
+
+      // The seat, on the other hand, is read by a camera that lives in world
+      // space — so this one does need the group transform applied by hand.
       if (i === 0) {
-        seats.ferrisWheel.pos.copy(vec);
+        seats.ferrisWheel.pos
+          .set(vec.x, vec.y + CABIN_EYE, vec.z)
+          .applyAxisAngle(UP_AXIS, yaw)
+          .add(hubOffset.set(slot.x, 0, slot.z));
         seats.ferrisWheel.yaw = yaw + Math.PI / 2;
       }
+
       // the roof lights chase around the rim
       const lit = 0.55 + 0.45 * Math.sin(pulse + i * 0.7);
       scl.setScalar(0.8 + lit * 0.5);
-      vec.y += 2.1;
-      mtx.compose(vec, qut, scl);
+      vec.y += CABIN_FLOOR + 3.62;
+      mtx.compose(vec, IDENT_Q, scl);
       glows.current?.setMatrixAt(i, mtx);
       scl.setScalar(1);
     }
-    if (cabins.current) cabins.current.instanceMatrix.needsUpdate = true;
-    if (glows.current) glows.current.instanceMatrix.needsUpdate = true;
+    for (const m of [cabins.current, glass.current, trim.current, glows.current]) {
+      if (m) m.instanceMatrix.needsUpdate = true;
+    }
   });
 
   const poster = posterOf(item, stations[0]);
@@ -293,17 +322,39 @@ function FerrisWheel({ slot, accent, item }: { slot: Slot; accent: string; item:
         </mesh>
       </group>
 
-      {/* cabins and their roof lamps, both instanced */}
-      <instancedMesh ref={cabins} args={[undefined, undefined, GONDOLAS]} castShadow>
-        <boxGeometry args={[3.4, 2.6, 3.4]} />
+      {/* Cabins: painted shell, glazing and bright trim as three instanced
+          draws over the whole ring. One box per gondola was cheaper and read
+          as a crate on a string. */}
+      <instancedMesh
+        ref={cabins}
+        args={[gondolaShell(), undefined, GONDOLAS]}
+        castShadow
+        frustumCulled={false}
+      >
         <meshPhysicalMaterial
-          color="#eef2f8"
-          roughness={0.25}
-          metalness={0.2}
-          clearcoat={0.7}
+          color="#e7ecf4"
+          roughness={0.32}
+          metalness={0.15}
+          clearcoat={0.85}
+          clearcoatRoughness={0.16}
         />
       </instancedMesh>
-      <instancedMesh ref={glows} args={[undefined, undefined, GONDOLAS]}>
+      <instancedMesh ref={glass} args={[gondolaGlass(), undefined, GONDOLAS]} frustumCulled={false}>
+        <meshPhysicalMaterial
+          color="#9fd4e8"
+          roughness={0.06}
+          metalness={0}
+          transmission={0.6}
+          transparent
+          opacity={0.42}
+          side={DoubleSide}
+          envMapIntensity={2}
+        />
+      </instancedMesh>
+      <instancedMesh ref={trim} args={[gondolaTrim(), undefined, GONDOLAS]} frustumCulled={false}>
+        <meshStandardMaterial color="#cfd6e2" roughness={0.24} metalness={0.95} />
+      </instancedMesh>
+      <instancedMesh ref={glows} args={[undefined, undefined, GONDOLAS]} frustumCulled={false}>
         <sphereGeometry args={[0.62, 10, 8]} />
         <meshBasicMaterial color={accent} toneMapped={false} />
       </instancedMesh>
@@ -361,8 +412,13 @@ function DropTower({ slot, accent, item }: { slot: Slot; accent: string; item: S
     if (beacon.current) {
       beacon.current.opacity = Math.sin(state.clock.elapsedTime * 3) > 0 ? 1 : 0.05;
     }
-    // publish the seat for ExploreCamera to strap into
-    seats.dropTower.pos.set(slot.x, y + 8, slot.z);
+    // The seat is on the car's rim facing out, not at the middle of the mast —
+    // sitting at the centre puts the rider inside the tower's own lattice.
+    seats.dropTower.pos.set(
+      slot.x + Math.sin(slot.rot) * 7.4,
+      y + 8 + 1.1,
+      slot.z + Math.cos(slot.rot) * 7.4,
+    );
     seats.dropTower.yaw = slot.rot;
   });
 

@@ -214,16 +214,16 @@ export function RideCamera({
     /* ── the landing plate ─────────────────────────────────────────────── */
 
     const orbit = t * 0.021 + 0.75;
-    const radius = 430;
+    const radius = 400;
     ovPos.set(
       Math.sin(orbit) * radius + pointer.current.x * 34,
-      186 - pointer.current.y * 22,
+      150 - pointer.current.y * 22,
       Math.cos(orbit) * radius,
     );
     // on wide screens, push the park clear of the copy on the left
     const aspect = size.width / Math.max(1, size.height);
     lateral.set(-ovPos.z, 0, ovPos.x).normalize();
-    ovTgt.set(pointer.current.x * 12, 34, 0).addScaledVector(lateral, aspect > 1.25 ? 78 : 0);
+    ovTgt.set(pointer.current.x * 12, 90, 0).addScaledVector(lateral, aspect > 1.25 ? 78 : 0);
 
     camPos.lerp(ovPos, 1 - blend);
     camTgt.lerp(ovTgt, 1 - blend);
@@ -266,7 +266,7 @@ export function RideCamera({
 
     // wider on the outside rigs so the park has room in frame
     const rideFov = onboard ? 56 + shake.current * 12 : shot.rig === "drone" ? 52 : 46;
-    const targetFov = MathUtils.lerp(34, rideFov, blend);
+    const targetFov = MathUtils.lerp(42, rideFov, blend);
     cam.fov += (targetFov - cam.fov) * Math.min(1, dt * 2.6);
     cam.updateProjectionMatrix();
   });

@@ -19,11 +19,23 @@ import { neonText } from "@/lib/park/sign";
 
 const camPos = new Vector3();
 
-/** Markers hold full strength to here, then fade out and cull. */
-const FADE_NEAR = 130;
-const FADE_FAR = 210;
+/**
+ * Markers hold full strength to here, then fade out and cull.
+ *
+ * Deliberately short. These are drawn through walls, so a generous range turns
+ * the whole park into a wall of floating labels — the minimap is what you
+ * navigate by, and a marker is only meant to tell you what you are standing
+ * in front of.
+ */
+const FADE_NEAR = 45;
+const FADE_FAR = 90;
 
-function Pin({ marker, state }: { marker: Marker; state: "idle" | "aimed" | "dim" }) {
+type PinState = "idle" | "aimed" | "dim" | "open";
+
+function Pin({ marker, state }: { marker: Marker; state: PinState }) {
+  /** Culling sits here, not on the label cluster — the beam and the ground
+      ring are siblings of it and would otherwise stay lit park-wide. */
+  const root = useRef<Group>(null);
   const group = useRef<Group>(null);
   const ring = useRef<Mesh>(null);
   const fade = useRef(-1);
@@ -46,11 +58,12 @@ function Pin({ marker, state }: { marker: Marker; state: "idle" | "aimed" | "dim
     camPos.setFromMatrixPosition(camera.matrixWorld);
     const dist = camPos.distanceTo(g.parent!.position);
 
-    // Drawn through walls, so without a range limit all eighteen stack up into
-    // a wall of text across the whole screen. Only the ones near enough to walk
-    // to are worth showing.
-    const near = dist < FADE_FAR;
-    g.visible = near;
+    // Drawn through walls, so without a range limit every marker in the park
+    // stacks up into a wall of text. The one you have actually opened is
+    // exempt — the camera parks further away than the cull distance to frame
+    // the ride, and its own label vanishing at that moment looks like a bug.
+    const near = dist < FADE_FAR || state === "open";
+    if (root.current) root.current.visible = near;
     if (!near) return;
 
     // hold the label at a readable size wherever you are standing
@@ -79,7 +92,7 @@ function Pin({ marker, state }: { marker: Marker; state: "idle" | "aimed" | "dim
   const w = Math.max(15, marker.title.length * 1.45);
 
   return (
-    <group position={[marker.pos[0], marker.pos[1], marker.pos[2]]}>
+    <group ref={root} position={[marker.pos[0], marker.pos[1], marker.pos[2]]}>
       <group ref={group}>
         {/* backing plate, so the lettering has something to sit on against a
             bright sky or a lit facade */}
@@ -192,11 +205,13 @@ export function Markers() {
           key={m.id}
           marker={m}
           state={
-            selected && selected !== m.id
-              ? "dim"
-              : hovered === m.id && !selected
-                ? "aimed"
-                : "idle"
+            selected === m.id
+              ? "open"
+              : selected
+                ? "dim"
+                : hovered === m.id
+                  ? "aimed"
+                  : "idle"
           }
         />
       ))}
