@@ -297,7 +297,7 @@
       "body": "Open ground, airtime hills, and every trophy lit from below. The sky goes off over this one.",
       "marquee": "PRIZE ROW",
       "accent": "#ff5f45",
-      "shots": ["drone", "chase", "flank"],
+      "shots": ["pyro", "chase", "pyro"],
       "scroll": { "enter": 0.75, "exit": 0.88 },
       "items": [
         {

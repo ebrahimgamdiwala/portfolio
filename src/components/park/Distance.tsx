@@ -232,9 +232,9 @@ function Haze({ radius, height, opacity }: { radius: number; height: number; opa
  * well not be modelled — the park should feel like it is somewhere.
  */
 export function Distance() {
-  const near = useMemo(() => ridge(850, 300, 4021), []);
-  const mid = useMemo(() => ridge(1300, 400, 5563), []);
-  const far = useMemo(() => ridge(1800, 520, 9137), []);
+  const near = useMemo(() => ridge(1020, 310, 4021), []);
+  const mid = useMemo(() => ridge(1450, 420, 5563), []);
+  const far = useMemo(() => ridge(1920, 540, 9137), []);
 
   return (
     <group>
@@ -242,22 +242,22 @@ export function Distance() {
           three stacked haze layers, and a near-black range loses to even a
           little atmosphere — which is exactly how the mountains vanished. */}
       <mesh geometry={far} frustumCulled={false} renderOrder={-9}>
-        <meshBasicMaterial color="#4a4b76" vertexColors side={DoubleSide} toneMapped={false} />
+        <meshBasicMaterial color="#33355c" vertexColors side={DoubleSide} toneMapped={false} />
       </mesh>
-      <Haze radius={1700} height={520} opacity={0.18} />
+      <Haze radius={1830} height={540} opacity={0.18} />
 
       <mesh geometry={mid} frustumCulled={false} renderOrder={-8}>
-        <meshBasicMaterial color="#3a3a63" vertexColors side={DoubleSide} toneMapped={false} />
+        <meshBasicMaterial color="#26284a" vertexColors side={DoubleSide} toneMapped={false} />
       </mesh>
       <City />
-      <Haze radius={1220} height={400} opacity={0.14} />
+      <Haze radius={1360} height={420} opacity={0.14} />
 
       <mesh geometry={near} frustumCulled={false} renderOrder={-7}>
-        <meshBasicMaterial color="#2b2b4d" vertexColors side={DoubleSide} toneMapped={false} />
+        <meshBasicMaterial color="#191b36" vertexColors side={DoubleSide} toneMapped={false} />
       </mesh>
       {/* the nearest band stays lightest — it is the one between you and
           everything else, so it doubles every layer behind it */}
-      <Haze radius={800} height={300} opacity={0.1} />
+      <Haze radius={960} height={310} opacity={0.1} />
     </group>
   );
 }

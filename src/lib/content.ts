@@ -39,10 +39,18 @@ export type AttractionKind =
  *   chase    behind and above the train
  *   flank    flying alongside, train in profile against the park
  *   drone    high and ahead, looking back down as the train comes on
+ *   pyro     low and behind, aimed up into the sky over the train
  *   crane    a fixed camera planted by the rails that the train sweeps past
  *   orbit    the landing plate, high over the whole park
  */
-export type CameraRig = "onboard" | "chase" | "flank" | "drone" | "crane" | "orbit";
+export type CameraRig =
+  | "onboard"
+  | "chase"
+  | "flank"
+  | "drone"
+  | "pyro"
+  | "crane"
+  | "orbit";
 
 /** One keyframe of the dusk -> night arc, sampled on ride progress. */
 export interface SkyKey {

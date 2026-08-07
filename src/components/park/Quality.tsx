@@ -44,8 +44,8 @@ const SETTINGS: Record<Tier, Omit<QualitySettings, "tier" | "calm">> = {
     shadows: false,
     shadowMap: 512,
     bloomResolution: 256,
-    crowd: 0.25,
-    embers: 0.3,
+    crowd: 0.45,
+    embers: 0.55,
   },
 };
 
@@ -88,10 +88,20 @@ export function Quality({ children }: { children: ReactNode }) {
   const [calm] = useState(prefersCalm);
   const [pinned] = useState(() => forcedTier() !== null);
 
+  // which tier the park settled on, for diagnosing "where did my fireworks go"
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    (window as unknown as { __tier?: Tier }).__tier = tier;
+  }
+
   return (
     <>
       {!pinned && (
         <PerformanceMonitor
+          // Default bounds treat anything under the display's refresh rate as a
+          // decline, so a perfectly good 45fps machine gets dropped to the
+          // bottom tier and quietly loses shadows, depth of field and half the
+          // atmosphere. Only step down when it is genuinely struggling.
+          bounds={() => [32, 55]}
           onDecline={() => setTier((t) => (t === "high" ? "medium" : "low"))}
           onFallback={() => setTier("low")}
           flipflops={3}

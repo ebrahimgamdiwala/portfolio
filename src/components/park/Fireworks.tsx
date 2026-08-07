@@ -29,8 +29,8 @@ import { useQuality } from "./Quality";
  */
 
 const SHELLS = 22;
+/** Stars per shell at full quality; thinned rather than dropped on weak GPUs. */
 const PER_SHELL = 190;
-const COUNT = SHELLS * PER_SHELL;
 /** Seconds between one shell and the next getting its turn. */
 const STAGGER = 1.35;
 const CYCLE = SHELLS * STAGGER;
@@ -99,6 +99,16 @@ export function Fireworks() {
   const points = useRef<Points>(null);
   const station = useMemo(() => stations.find((s) => s.id === "awards"), []);
 
+  // The finale is the one thing that should never be switched off — a park
+  // that stops firing because the frame rate dipped has lost its ending. Thin
+  // the shells instead, and only slightly: a few thousand additive points cost
+  // almost nothing next to a draw call.
+  const perShell = Math.max(
+    50,
+    Math.round(PER_SHELL * (q.tier === "high" ? 1 : q.tier === "medium" ? 0.85 : 0.65)),
+  );
+  const COUNT = SHELLS * perShell;
+
   const { geometry, material } = useMemo(() => {
     const rng = new Rng(31415);
     const zone = ZONES.pyro;
@@ -125,8 +135,8 @@ export function Fireworks() {
       // looking like the same firework twenty-two times
       const ring = rng.chance(0.3);
 
-      for (let k = 0; k < PER_SHELL; k++) {
-        const i = s * PER_SHELL + k;
+      for (let k = 0; k < perShell; k++) {
+        const i = s * perShell + k;
         pos[i * 3] = ox;
         pos[i * 3 + 1] = 2;
         pos[i * 3 + 2] = oz;
@@ -168,7 +178,7 @@ export function Fireworks() {
     });
 
     return { geometry: g, material: m };
-  }, [station]);
+  }, [station, perShell, COUNT]);
 
   useFrame((state) => {
     material.uniforms.uTime.value = state.clock.elapsedTime;
@@ -181,8 +191,6 @@ export function Fireworks() {
     const u = material.uniforms.uGain;
     u.value += (target - u.value) * 0.03;
   });
-
-  if (q.tier === "low") return null;
 
   return <points ref={points} geometry={geometry} material={material} frustumCulled={false} />;
 }

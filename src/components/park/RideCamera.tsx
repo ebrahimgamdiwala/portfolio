@@ -147,6 +147,19 @@ export function RideCamera({
       return;
     }
 
+    if (rig === "pyro") {
+      // Low and behind, aimed up over the train. Every other rig looks at or
+      // below the car, which is why the fireworks — the one thing this chapter
+      // is about — never made it into frame.
+      outPos
+        .copy(carPos)
+        .addScaledVector(fwd, -26)
+        .addScaledVector(WORLD_UP, 4 + Math.sin(t * 0.19) * 2)
+        .addScaledVector(right, Math.sin(t * 0.13) * 14);
+      outTgt.copy(carPos).addScaledVector(fwd, 46).addScaledVector(WORLD_UP, 34);
+      return;
+    }
+
     if (rig === "drone") {
       // High and ahead, looking back down the rails as the train comes on.
       outPos

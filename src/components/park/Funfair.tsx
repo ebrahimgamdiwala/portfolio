@@ -1,12 +1,17 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   CatmullRomCurve3,
+  Color,
   DoubleSide,
+  InstancedBufferAttribute,
+  Matrix4,
+  Quaternion,
   Vector3,
   type Group,
+  type InstancedMesh,
   type Mesh,
   type MeshBasicMaterial,
   type MeshStandardMaterial,
@@ -43,19 +48,61 @@ function Frame({ pieces, color }: { pieces: Piece[]; color: string }) {
 
 /* ── carousel ─────────────────────────────────────────────────────────────── */
 
+const R = 13;
+const COUNT = 14;
+const hm = new Matrix4();
+const hv = new Vector3();
+const hq = new Quaternion();
+const hOne = new Vector3(1, 1, 1);
+const H_UP = new Vector3(0, 1, 0);
+
 function Carousel({ slot, seed, index }: { slot: Slot; seed: number; index: number }) {
   const spin = useRef<Group>(null);
-  const horses = useRef<(Group | null)[]>([]);
-  const R = 13;
-  const COUNT = 14;
+  const coats = useRef<InstancedMesh>(null);
+  const tacks = useRef<InstancedMesh>(null);
+  const poles = useRef<InstancedMesh>(null);
   const canopy = useMemo(() => stripes("#f6f2e8", CANDY[seed % CANDY.length], 18), [seed]);
+
+  // colours and the static poles, set once
+  useLayoutEffect(() => {
+    const coat = new Float32Array(COUNT * 3);
+    const tack = new Float32Array(COUNT * 3);
+    const c = new Color();
+    for (let i = 0; i < COUNT; i++) {
+      c.set(CANDY[(i + seed) % CANDY.length]).toArray(coat, i * 3);
+      c.set(i % 2 ? "#f4e7c8" : "#c9a227").toArray(tack, i * 3);
+
+      const a = (i / COUNT) * Math.PI * 2;
+      hv.set(Math.cos(a) * R, 6, Math.sin(a) * R);
+      poles.current?.setMatrixAt(i, hm.compose(hv, hq.identity(), hOne));
+    }
+    if (poles.current) poles.current.instanceMatrix.needsUpdate = true;
+    for (const [mesh, colors] of [
+      [coats.current, coat],
+      [tacks.current, tack],
+    ] as const) {
+      if (!mesh) continue;
+      const attr = new InstancedBufferAttribute(colors, 3);
+      attr.needsUpdate = true;
+      mesh.instanceColor = attr;
+    }
+  }, [seed]);
 
   useFrame((state, dt) => {
     if (spin.current) spin.current.rotation.y += dt * 0.42;
     const t = state.clock.elapsedTime;
-    horses.current.forEach((h, i) => {
-      if (h) h.position.y = 3.1 + Math.sin(t * 2.1 + i * 0.9) * 0.9;
-    });
+
+    // each horse rises and falls on its own pole
+    for (let i = 0; i < COUNT; i++) {
+      const a = (i / COUNT) * Math.PI * 2;
+      hv.set(Math.cos(a) * R, 3.1 + Math.sin(t * 2.1 + i * 0.9) * 0.9, Math.sin(a) * R);
+      hq.setFromAxisAngle(H_UP, -a);
+      hm.compose(hv, hq, hOne);
+      coats.current?.setMatrixAt(i, hm);
+      tacks.current?.setMatrixAt(i, hm);
+    }
+    if (coats.current) coats.current.instanceMatrix.needsUpdate = true;
+    if (tacks.current) tacks.current.instanceMatrix.needsUpdate = true;
 
     // The first horse is the boarding seat. Its published position follows
     // the rotating platform, so the first-person camera rides with it.
@@ -118,44 +165,30 @@ function Carousel({ slot, seed, index }: { slot: Slot; seed: number; index: numb
           <meshBasicMaterial color="#ffcf8f" toneMapped={false} />
         </mesh>
 
-        {Array.from({ length: COUNT }, (_, i) => {
-          const a = (i / COUNT) * Math.PI * 2;
-          const x = Math.cos(a) * R;
-          const z = Math.sin(a) * R;
-          return (
-            <group key={i}>
-              <mesh position={[x, 6, z]}>
-                <cylinderGeometry args={[0.14, 0.14, 9, 8]} />
-                <meshStandardMaterial color="#d9b45a" roughness={0.25} metalness={0.95} />
-              </mesh>
-              <group
-                ref={(el) => void (horses.current[i] = el)}
-                position={[x, 3.1, z]}
-                rotation={[0, -a, 0]}
-              >
-                {/* Coat and tack are separate meshes so the mane, saddle and
-                    hooves keep their own materials — a single-colour horse
-                    reads as a lump whatever shape it is. */}
-                <mesh geometry={horseCoat()} castShadow>
-                  <meshPhysicalMaterial
-                    color={CANDY[(i + seed) % CANDY.length]}
-                    roughness={0.34}
-                    metalness={0.1}
-                    clearcoat={0.6}
-                    clearcoatRoughness={0.3}
-                  />
-                </mesh>
-                <mesh geometry={horseTack()} castShadow>
-                  <meshStandardMaterial
-                    color={i % 2 ? "#f4e7c8" : "#c9a227"}
-                    roughness={0.42}
-                    metalness={0.55}
-                  />
-                </mesh>
-              </group>
-            </group>
-          );
-        })}
+        {/* Coat, tack and poles are three instanced batches rather than 28
+            separate meshes. Fourteen horses each drawn twice with a clearcoat
+            shader, times two carousels, was 56 draw calls of the most
+            expensive material in the park — enough on its own to drag the
+            quality tier down and take the fireworks with it. */}
+        <instancedMesh
+          ref={coats}
+          args={[horseCoat(), undefined, COUNT]}
+          castShadow
+          frustumCulled={false}
+        >
+          <meshStandardMaterial roughness={0.34} metalness={0.12} />
+        </instancedMesh>
+        <instancedMesh
+          ref={tacks}
+          args={[horseTack(), undefined, COUNT]}
+          frustumCulled={false}
+        >
+          <meshStandardMaterial roughness={0.42} metalness={0.55} />
+        </instancedMesh>
+        <instancedMesh ref={poles} args={[undefined, undefined, COUNT]} frustumCulled={false}>
+          <cylinderGeometry args={[0.14, 0.14, 9, 8]} />
+          <meshStandardMaterial color="#d9b45a" roughness={0.25} metalness={0.95} />
+        </instancedMesh>
       </group>
 
     </group>
