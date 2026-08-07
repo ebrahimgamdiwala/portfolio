@@ -28,6 +28,13 @@ export interface Marker {
   boardable?: boolean;
   /** Moving-seat key when several rides share the same kind. */
   rideId?: string;
+  /**
+   * How big the thing is, for aiming. Targeting tests the crosshair ray
+   * against a sphere this size rather than against the marker's own point, so
+   * looking anywhere at a ride selects it — you should not have to find a
+   * label floating at its centre.
+   */
+  radius: number;
   item?: StationItem;
   station: Station;
 }
@@ -47,6 +54,23 @@ const FRAMING: Record<string, { hover: number; back: number; eye: number }> = {
   stall: { hover: 13, back: 22, eye: 7 },
   plinth: { hover: 14, back: 20, eye: 8 },
   gate: { hover: 42, back: 74, eye: 26 },
+};
+
+/** Aim volume per structure — roughly what the thing occupies on screen. */
+const AIM_RADIUS: Record<string, number> = {
+  dropTower: 20,
+  ferrisWheel: 48,
+  machineHall: 36,
+  mainStage: 30,
+  scoreboard: 16,
+  carousel: 20,
+  waterSlide: 28,
+  teacups: 16,
+  swingRide: 20,
+  pirateShip: 20,
+  stall: 10,
+  plinth: 8,
+  gate: 34,
 };
 
 const ACTIONS: Record<string, { action: string; hint: string }> = {
@@ -127,6 +151,7 @@ function place(
     pos: [slot.x, f.hover, slot.z],
     view: [vx, f.eye, vz],
     look: [slot.x, f.hover * 0.7, slot.z],
+    radius: AIM_RADIUS[kind] ?? 14,
     accent: station.accent,
     boardable: kind === "dropTower" || kind === "ferrisWheel",
     item,

@@ -164,23 +164,29 @@ function Carousel({ slot, seed, index }: { slot: Slot; seed: number; index: numb
 
 /* ── swing ride ───────────────────────────────────────────────────────────── */
 
+/** Where the chains bolt to the canopy, and how long they are. */
+const ANCHOR_R = 6.4;
+const ANCHOR_Y = -1.7;
+const CHAIN_LEN = 13;
+
 function SwingRide({ slot, seed, index }: { slot: Slot; seed: number; index: number }) {
   const head = useRef<Group>(null);
-  const arms = useRef<Group>(null);
+  const chains = useRef<(Group | null)[]>([]);
   const H = 34;
   const COUNT = 18;
   const color = CANDY[(seed + 2) % CANDY.length];
 
   useFrame((state, dt) => {
     if (head.current) head.current.rotation.y += dt * 0.62;
-    if (arms.current) {
-      // the chains fly out as it winds up, then settle
-      const swing = 0.55 + Math.sin(state.clock.elapsedTime * 0.28) * 0.22;
-      arms.current.scale.setScalar(swing / 0.55);
-    }
+
+    // the chairs fly out as it winds up and settle as it slows
+    const fly = 0.52 + Math.sin(state.clock.elapsedTime * 0.28) * 0.24;
+    for (const c of chains.current) if (c) c.rotation.z = -fly;
+
+    // the seat rides at the end of a chain that is actually hanging there
     const a = head.current?.rotation.y ?? 0;
-    const sScale = arms.current?.scale.x ?? 1;
-    const rSeat = 13 * sScale;
+    const rSeat = ANCHOR_R + Math.sin(fly) * CHAIN_LEN;
+    const seatY = H - 2 + ANCHOR_Y - Math.cos(fly) * CHAIN_LEN;
     const localX = Math.cos(a) * rSeat;
     const localZ = -Math.sin(a) * rSeat;
     const cosR = Math.cos(slot.rot);
@@ -189,11 +195,7 @@ function SwingRide({ slot, seed, index }: { slot: Slot; seed: number; index: num
     const worldDz = -localX * sinR + localZ * cosR;
     const key = `swingRide${index}`;
     if (seats[key]) {
-      seats[key].pos.set(
-        slot.x + worldDx,
-        H - 15,
-        slot.z + worldDz,
-      );
+      seats[key].pos.set(slot.x + worldDx, seatY + 0.9, slot.z + worldDz);
       seats[key].yaw = Math.atan2(worldDx, worldDz);
     }
   });
@@ -225,38 +227,43 @@ function SwingRide({ slot, seed, index }: { slot: Slot; seed: number; index: num
           <meshBasicMaterial color={color} toneMapped={false} />
         </mesh>
 
-        <group ref={arms}>
-          {Array.from({ length: COUNT }, (_, i) => {
-            const a = (i / COUNT) * Math.PI * 2;
-            const rTop = 6.4;
-            const rSeat = 13;
-            const drop = 12;
-            const x0 = Math.cos(a) * rTop;
-            const z0 = Math.sin(a) * rTop;
-            const x1 = Math.cos(a) * rSeat;
-            const z1 = Math.sin(a) * rSeat;
-            const mid = new Vector3((x0 + x1) / 2, -drop / 2 - 1, (z0 + z1) / 2);
-            const len = Math.hypot(x1 - x0, drop, z1 - z0);
-            return (
-              <group key={i}>
-                <mesh
-                  position={mid.toArray()}
-                  rotation={[0, -a, Math.atan2(x1 - x0, drop) * 0 + Math.atan2(rSeat - rTop, drop)]}
-                >
-                  <cylinderGeometry args={[0.06, 0.06, len, 5]} />
+        {/* Each chain pivots at its own anchor on the canopy rim, so it stays
+            bolted to the ride however far it flies out. The old version
+            positioned chains at their midpoints and then scaled the whole
+            group to make them swing, which slid every top away from the
+            canopy and left them hanging in mid-air. */}
+        {Array.from({ length: COUNT }, (_, i) => {
+          const a = (i / COUNT) * Math.PI * 2;
+          const x0 = Math.cos(a) * ANCHOR_R;
+          const z0 = Math.sin(a) * ANCHOR_R;
+          return (
+            <group key={i} position={[x0, ANCHOR_Y, z0]} rotation={[0, -a, 0]}>
+              {/* local +X now points radially outward, so a Z rotation here
+                  swings the chair out in the radial/vertical plane */}
+              <group ref={(el) => void (chains.current[i] = el)}>
+                <mesh position={[0, -CHAIN_LEN / 2, 0]}>
+                  <cylinderGeometry args={[0.055, 0.055, CHAIN_LEN, 5]} />
                   <meshStandardMaterial color="#aab2c0" roughness={0.4} metalness={0.9} />
                 </mesh>
-                <mesh position={[x1, -drop - 1, z1]} rotation={[0, -a, 0]} castShadow>
-                  <boxGeometry args={[1.5, 0.9, 1.1]} />
+                {/* the chair, hung square off the bottom of the chain */}
+                <mesh position={[0, -CHAIN_LEN - 0.45, 0]} castShadow>
+                  <boxGeometry args={[1.2, 0.9, 1.5]} />
                   <meshStandardMaterial
                     color={CANDY[(i + seed) % CANDY.length]}
                     roughness={0.45}
                   />
                 </mesh>
+                <mesh position={[0, -CHAIN_LEN - 0.05, -0.62]} castShadow>
+                  <boxGeometry args={[1.2, 1.1, 0.14]} />
+                  <meshStandardMaterial
+                    color={CANDY[(i + seed) % CANDY.length]}
+                    roughness={0.5}
+                  />
+                </mesh>
               </group>
-            );
-          })}
-        </group>
+            </group>
+          );
+        })}
       </group>
 
     </group>

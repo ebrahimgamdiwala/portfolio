@@ -26,10 +26,9 @@ const WALK = 30;
 const RUN = 72;
 /** The fence is at PARK.fenceRadius; stop short of touching it. */
 const BOUND = PARK.fenceRadius - 14;
-/** How far off-centre a marker can be and still count as targeted. */
-const AIM_COS = Math.cos(0.16);
-/** Matched to the marker cull distance — you cannot target what you cannot see. */
-const AIM_RANGE = 95;
+/** Aim reach. A marker you are looking at un-culls itself, so this can run
+ *  past the marker fade distance without leaving you aiming at nothing. */
+const AIM_RANGE = 140;
 
 const aim = new Vector3();
 const want = new Vector3();
@@ -408,16 +407,29 @@ export function ExploreCamera() {
       cam.up.set(0, 1, 0);
       cam.lookAt(aim.copy(cam.position).addScaledVector(fwd, 20));
 
-      // whichever marker sits nearest the middle of the screen
+      // Whichever ride the crosshair is actually ON. This is a ray/sphere test
+      // against the structure's own size, not a fixed angular cone about a
+      // point — so looking anywhere at a ferris wheel picks the ferris wheel,
+      // and the tolerance grows as you walk up to something instead of
+      // demanding you find a label hovering at its centre.
       let best: string | null = null;
-      let bestDot = AIM_COS;
+      let bestScore = 1;
       for (const m of markers) {
-        toMarker.set(m.pos[0] - cam.position.x, m.pos[1] - cam.position.y, m.pos[2] - cam.position.z);
+        toMarker.set(
+          m.look[0] - cam.position.x,
+          m.look[1] - cam.position.y,
+          m.look[2] - cam.position.z,
+        );
         const dist = toMarker.length();
-        if (dist > AIM_RANGE || dist < 1) continue;
-        const d = toMarker.divideScalar(dist).dot(fwd);
-        if (d > bestDot) {
-          bestDot = d;
+        if (dist > AIM_RANGE || dist < 0.5) continue;
+
+        const along = toMarker.dot(fwd);
+        if (along <= 0) continue; // behind you
+        // perpendicular distance from the aim ray to the ride's centre
+        const perp = Math.sqrt(Math.max(0, dist * dist - along * along));
+        const score = perp / m.radius;
+        if (score < 1 && score < bestScore) {
+          bestScore = score;
           best = m.id;
         }
       }

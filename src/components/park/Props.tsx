@@ -91,9 +91,17 @@ function Lamps({ set }: { set: PropSet }) {
 
   useLayoutEffect(() => {
     set.lamps.forEach((l, i) => {
-      v3.set(l.x, l.h + 0.3, l.z);
+      const bulb = l.h + 0.3;
+      v3.set(l.x, bulb, l.z);
       heads.current?.setMatrixAt(i, m4.compose(v3, q4, one));
-      halos.current?.setMatrixAt(i, m4.compose(v3, q4, one));
+
+      // A cone's apex sits at +height/2, so centring one on the bulb puts half
+      // the beam ABOVE the lamp. Scale a unit cone to the lamp's own height and
+      // sit it at half that, and the apex lands exactly on the bulb with the
+      // base spread on the ground where it belongs.
+      scale.set(3.2, bulb, 3.2);
+      v3.set(l.x, bulb / 2, l.z);
+      halos.current?.setMatrixAt(i, m4.compose(v3, q4, scale));
     });
     if (heads.current) heads.current.instanceMatrix.needsUpdate = true;
     if (halos.current) halos.current.instanceMatrix.needsUpdate = true;
@@ -118,7 +126,8 @@ function Lamps({ set }: { set: PropSet }) {
           more than a whisper a park's worth of these stops reading as light in
           the air and starts reading as a field of solid glass cones. */}
       <instancedMesh ref={halos} args={[undefined, undefined, set.lamps.length]} frustumCulled={false}>
-        <coneGeometry args={[2.4, 7, 10, 1, true]} />
+        {/* unit cone — each instance stretches it to its own lamp's height */}
+        <coneGeometry args={[1, 1, 10, 1, true]} />
         <meshBasicMaterial
           color="#ffcf94"
           transparent

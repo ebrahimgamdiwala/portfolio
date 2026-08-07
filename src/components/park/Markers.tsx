@@ -62,7 +62,7 @@ function Pin({ marker, state }: { marker: Marker; state: PinState }) {
     // stacks up into a wall of text. The one you have actually opened is
     // exempt — the camera parks further away than the cull distance to frame
     // the ride, and its own label vanishing at that moment looks like a bug.
-    const near = dist < FADE_FAR || state === "open";
+    const near = dist < FADE_FAR || state === "open" || state === "aimed";
     if (root.current) root.current.visible = near;
     if (!near) return;
 
