@@ -12,6 +12,7 @@ import {
   Vector3,
   type InstancedMesh,
   type MeshStandardMaterial,
+  type MeshBasicMaterial,
 } from "three";
 import type { PropSet } from "@/lib/park/props";
 import { paintedSteel } from "@/lib/park/textures";
