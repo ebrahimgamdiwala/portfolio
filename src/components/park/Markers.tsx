@@ -96,7 +96,7 @@ function Pin({ marker, state }: { marker: Marker; state: PinState }) {
       <group ref={group}>
         {/* backing plate, so the lettering has something to sit on against a
             bright sky or a lit facade */}
-        <mesh position={[0, 0, -0.1]} renderOrder={9000} userData={{ baseOpacity: dim ? 0.14 : state === "aimed" ? 0.82 : 0.62 }}>
+        <mesh position={[0, 0, 0]} renderOrder={9000} userData={{ baseOpacity: dim ? 0.14 : state === "aimed" ? 0.82 : 0.62 }}>
           <planeGeometry args={[w, 5.4]} />
           <meshBasicMaterial
             color="#05070d"
@@ -140,7 +140,7 @@ function Pin({ marker, state }: { marker: Marker; state: PinState }) {
         )}
 
         {/* the diamond that says "target" */}
-        <mesh position={[0, 3.6, 0]} rotation={[0, 0, Math.PI / 4]} renderOrder={9001} userData={{ baseOpacity: dim ? 0.2 : 1 }}>
+        <mesh position={[0, 3.6, 0]} rotation={[0, 0, Math.PI / 4]} renderOrder={9001} userData={{ baseOpacity: dim ? 0.2 : 1 }} visible={state !== "open"}>
           <planeGeometry args={[1.5, 1.5]} />
           <meshBasicMaterial
             color={marker.accent}
@@ -155,7 +155,7 @@ function Pin({ marker, state }: { marker: Marker; state: PinState }) {
       </group>
 
       {/* the beam standing in the ring, so a pin reads from across the park */}
-      <mesh position={[0, -marker.pos[1] / 2, 0]} renderOrder={8000}>
+      <mesh position={[0, -marker.pos[1] / 2, 0]} renderOrder={8000} visible={state !== "open"}>
         <cylinderGeometry args={[0.7, 2, marker.pos[1], 12, 1, true]} />
         <meshBasicMaterial
           color={marker.accent}
@@ -172,6 +172,7 @@ function Pin({ marker, state }: { marker: Marker; state: PinState }) {
         position={[0, -marker.pos[1] + 0.2, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={8001}
+        visible={state !== "open"}
       >
         <ringGeometry args={[4.2, 5.6, 4, 1]} />
         <meshBasicMaterial

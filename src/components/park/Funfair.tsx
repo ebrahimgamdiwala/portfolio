@@ -1013,11 +1013,19 @@ function Kiosks() {
             <boxGeometry args={[8, 0.2, 3.4]} />
             <meshStandardMaterial map={awnings[i]} roughness={0.7} side={DoubleSide} />
           </mesh>
-          <mesh position={[0, 6.4, 0.16]}>
+          {/* sign supports */}
+          {[-3.2, 3.2].map((px) => (
+            <mesh key={px} position={[px, 5.9, 0]} castShadow>
+              <cylinderGeometry args={[0.1, 0.1, 3.2]} />
+              <meshStandardMaterial color="#1a1512" roughness={0.9} />
+            </mesh>
+          ))}
+
+          <mesh position={[0, 7.4, 0.16]}>
             <planeGeometry args={[6.8, 1.2]} />
             <meshBasicMaterial map={signs[i]} transparent depthWrite={false} toneMapped={false} />
           </mesh>
-          <mesh position={[0, 6.4, 0]}>
+          <mesh position={[0, 7.4, 0]}>
             <boxGeometry args={[7.2, 1.4, 0.3]} />
             <meshStandardMaterial color="#1a1512" roughness={0.9} />
           </mesh>

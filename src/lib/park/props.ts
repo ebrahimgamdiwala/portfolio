@@ -1,7 +1,7 @@
 import { Color, Quaternion, Vector3 } from "three";
 import { stations } from "@/lib/content";
 import type { CoasterData, Piece } from "./coaster";
-import { PARK, SLOTS, ZONES } from "./layout";
+import { FURNITURE, PARK, SLOTS, ZONES } from "./layout";
 import { Rng } from "./rand";
 
 /**
@@ -230,6 +230,7 @@ export function buildProps(coaster: CoasterData): PropSet {
     const x = ZONES.gardens.x + Math.cos(a) * d;
     const z = ZONES.gardens.z + Math.sin(a) * d;
     if (nearTrack(x, z, 16)) continue;
+    if (FURNITURE.kiosks.some((k) => Math.hypot(x - k.x, z - k.z) < 12)) continue;
     trees.push({
       x,
       z,

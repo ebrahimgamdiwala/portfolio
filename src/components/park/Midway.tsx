@@ -80,6 +80,14 @@ function Stall({ item, slot, accent, index }: { item: StationItem; slot: Slot; a
         <meshStandardMaterial map={canopy} roughness={0.68} side={DoubleSide} />
       </mesh>
 
+      {/* sign supports */}
+      {[-5.0, 5.0].map((x) => (
+        <mesh key={x} position={[x, 8.6, 0.2]} castShadow>
+          <cylinderGeometry args={[0.15, 0.15, 3.6]} />
+          <meshStandardMaterial color="#141319" roughness={0.9} />
+        </mesh>
+      ))}
+
       {/* the sign */}
       <mesh position={[0, 10.2, 0.6]}>
         <planeGeometry args={[13, 2.6]} />
@@ -90,7 +98,7 @@ function Stall({ item, slot, accent, index }: { item: StationItem; slot: Slot; a
           depthWrite={false}
           blending={AdditiveBlending}
           toneMapped={false}
-                  />
+        />
       </mesh>
       <mesh position={[0, 10.2, 0.2]}>
         <boxGeometry args={[13.4, 3.2, 0.3]} />

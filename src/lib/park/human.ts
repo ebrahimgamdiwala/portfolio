@@ -82,8 +82,8 @@ function bone(
 /** Where each hand ends up, so `humanSkin` can put one exactly there. */
 export function wristAt(side: -1 | 1) {
   const sx = side * SHOULDER_X;
-  const upperTilt = side * -0.12;
-  const foreTilt = side * -0.34;
+  const upperTilt = side * 0.12;
+  const foreTilt = side * 0.12;
   const ex = sx + 0.3 * Math.sin(upperTilt);
   const ey = SHOULDER_Y - 0.3 * Math.cos(upperTilt);
   return {
@@ -154,7 +154,7 @@ export function humanBody(): BufferGeometry {
     cap.translate(sx, SHOULDER_Y, 0);
     parts.push(tag(cap, arm));
 
-    const upper = bone(0.056, 0.045, 0.3, sx, SHOULDER_Y, side * -0.12);
+    const upper = bone(0.056, 0.045, 0.3, sx, SHOULDER_Y, side * 0.12);
     parts.push(tag(upper.geometry, arm));
 
     const elbow = new SphereGeometry(0.047, 7, 6);
@@ -162,7 +162,7 @@ export function humanBody(): BufferGeometry {
     parts.push(tag(elbow, arm));
 
     // a little bend at the elbow, so arms are not two straight sticks
-    const fore = bone(0.045, 0.036, 0.29, upper.x, upper.y, side * -0.34);
+    const fore = bone(0.045, 0.036, 0.29, upper.x, upper.y, side * 0.12);
     parts.push(tag(fore.geometry, arm));
   }
 
@@ -198,7 +198,7 @@ export function humanSkin(): BufferGeometry {
     const wrist = wristAt(side);
     const hand = new SphereGeometry(0.052, 8, 6);
     hand.scale(0.82, 1.2, 0.72);
-    hand.rotateZ(side * -0.34);
+    hand.rotateZ(side * 0.12);
     hand.translate(wrist.x, wrist.y - 0.035, 0);
     parts.push(tag(hand, arm));
   }
