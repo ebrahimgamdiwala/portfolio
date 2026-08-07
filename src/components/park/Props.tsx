@@ -40,6 +40,7 @@ const UP = new Vector3(0, 1, 0);
 
 function Bulbs({ set }: { set: PropSet }) {
   const mesh = useRef<InstancedMesh>(null);
+  const mat = useRef<MeshBasicMaterial>(null);
   const count = set.bulbs.length / 3;
 
   useLayoutEffect(() => {
@@ -57,9 +58,8 @@ function Bulbs({ set }: { set: PropSet }) {
 
   useFrame((state) => {
     // a slow uneven breath across the whole park, like mains hum
-    const m = mesh.current;
-    if (!m) return;
-    m.scale.setScalar(0.94 + Math.sin(state.clock.elapsedTime * 1.7) * 0.06);
+    if (!mat.current) return;
+    mat.current.color.setScalar(0.94 + Math.sin(state.clock.elapsedTime * 1.7) * 0.06);
   });
 
   if (!count) return null;
@@ -67,7 +67,7 @@ function Bulbs({ set }: { set: PropSet }) {
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, count]} frustumCulled={false}>
       <sphereGeometry args={[0.26, 6, 5]} />
-      <meshBasicMaterial toneMapped={false} />
+      <meshBasicMaterial ref={mat} toneMapped={false} />
     </instancedMesh>
   );
 }
@@ -257,18 +257,21 @@ function Crowd({ set }: { set: PropSet }) {
   }, []);
 
   const people = useMemo(() => {
-    const total = Math.floor((set.crowd.length / 4) * q.crowd);
+    const N = set.crowd.length / 4;
+    const total = Math.floor(N * q.crowd);
     const rng = new Rng(31337);
+    const step = N / Math.max(1, total);
     return Array.from({ length: total }, (_, i) => {
-      const hx = set.crowd[i * 4];
-      const hz = set.crowd[i * 4 + 1];
+      const idx = Math.floor(i * step);
+      const hx = set.crowd[idx * 4];
+      const hz = set.crowd[idx * 4 + 1];
       return {
         /** Where they hang about. */
         homeX: hx,
         homeZ: hz,
         // Scaled up so visitors read prominently relative to the park's large structures.
-        h: (set.crowd[i * 4 + 2] / HUMAN_HEIGHT) * 2.2,
-        phase: set.crowd[i * 4 + 3],
+        h: (set.crowd[idx * 4 + 2] / HUMAN_HEIGHT) * 2.2,
+        phase: set.crowd[idx * 4 + 3],
         roam: rng.range(6, 22),
         speed: rng.range(1.9, 3.6),
         /** Live state. */

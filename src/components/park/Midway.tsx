@@ -29,12 +29,18 @@ function Stall({ item, slot, accent, index }: { item: StationItem; slot: Slot; a
 
   const prizes = useMemo(() => {
     const rng = new Rng(900 + index * 31);
-    return Array.from({ length: 18 }, () => ({
-      x: rng.range(-4.6, 4.6),
-      y: rng.range(3.2, 6.4),
-      s: rng.range(0.45, 0.85),
-      c: PRIZE_COLOURS[rng.int(PRIZE_COLOURS.length)],
-    }));
+    return Array.from({ length: 18 }, (_, i) => {
+      const row = Math.floor(i / 6);
+      const shelfY = 3.6 + row * 1.3;
+      const s = rng.range(0.35, 0.6); // scale
+      return {
+        x: -4.0 + (i % 6) * 1.6 + rng.spread(0.2),
+        y: shelfY + s,
+        z: -4.0 + rng.spread(0.1),
+        s,
+        c: PRIZE_COLOURS[rng.int(PRIZE_COLOURS.length)],
+      };
+    });
   }, [index]);
 
   useFrame((state) => {
@@ -46,19 +52,45 @@ function Stall({ item, slot, accent, index }: { item: StationItem; slot: Slot; a
 
   return (
     <group position={[slot.x, 0, slot.z]} rotation={[0, slot.rot, 0]}>
-      {/* booth */}
-      <mesh position={[0, 3.6, -1.6]} castShadow receiveShadow>
-        <boxGeometry args={[11.5, 7.2, 6]} />
-        <meshStandardMaterial color="#26222c" roughness={0.8} />
-      </mesh>
+      {/* booth (hollowed out to reveal interior) */}
+      <group>
+        {/* back */}
+        <mesh position={[0, 3.6, -4.7]} castShadow receiveShadow>
+          <boxGeometry args={[11.5, 7.2, 0.2]} />
+          <meshStandardMaterial color="#26222c" roughness={0.8} />
+        </mesh>
+        {/* left */}
+        <mesh position={[-5.65, 3.6, -1.6]} castShadow receiveShadow>
+          <boxGeometry args={[0.2, 7.2, 6]} />
+          <meshStandardMaterial color="#26222c" roughness={0.8} />
+        </mesh>
+        {/* right */}
+        <mesh position={[5.65, 3.6, -1.6]} castShadow receiveShadow>
+          <boxGeometry args={[0.2, 7.2, 6]} />
+          <meshStandardMaterial color="#26222c" roughness={0.8} />
+        </mesh>
+        {/* roof */}
+        <mesh position={[0, 7.1, -1.6]} castShadow receiveShadow>
+          <boxGeometry args={[11.1, 0.2, 6]} />
+          <meshStandardMaterial color="#26222c" roughness={0.8} />
+        </mesh>
+      </group>
       {/* back wall, lit, so the prizes read as silhouettes on it */}
       <mesh position={[0, 4.4, -4.5]}>
         <planeGeometry args={[11, 6.4]} />
         <meshBasicMaterial color="#3a1f4a" toneMapped={false} />
       </mesh>
 
+      {/* shelves for the prizes to sit on */}
+      {[3.6, 4.9, 6.2].map((y) => (
+        <mesh key={y} position={[0, y - 0.05, -3.9]} castShadow receiveShadow>
+          <boxGeometry args={[11, 0.1, 1.2]} />
+          <meshStandardMaterial color="#1a1820" roughness={0.9} />
+        </mesh>
+      ))}
+
       {prizes.map((p, i) => (
-        <mesh key={i} position={[p.x, p.y, -4.2]} scale={p.s}>
+        <mesh key={i} position={[p.x, p.y, p.z]} scale={p.s} castShadow>
           <sphereGeometry args={[1, 10, 8]} />
           <meshStandardMaterial color={p.c} roughness={0.85} emissive={p.c} emissiveIntensity={0.22} />
         </mesh>
