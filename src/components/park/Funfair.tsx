@@ -179,9 +179,11 @@ function SwingRide({ slot, seed, index }: { slot: Slot; seed: number; index: num
   useFrame((state, dt) => {
     if (head.current) head.current.rotation.y += dt * 0.62;
 
-    // the chairs fly out as it winds up and settle as it slows
-    const fly = 0.52 + Math.sin(state.clock.elapsedTime * 0.28) * 0.24;
-    for (const c of chains.current) if (c) c.rotation.z = -fly;
+    // The chairs fly OUT as it winds up. Local +X is radial after the anchor's
+    // -a yaw, and a positive Z rotation carries the chain's foot toward +X —
+    // negating it swings every chair inward to bunch around the mast instead.
+    const fly = 0.62 + Math.sin(state.clock.elapsedTime * 0.28) * 0.26;
+    for (const c of chains.current) if (c) c.rotation.z = fly;
 
     // the seat rides at the end of a chain that is actually hanging there
     const a = head.current?.rotation.y ?? 0;
