@@ -11,7 +11,8 @@ import {
 } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import { Vector2 } from "three";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { isTouchDevice } from "@/lib/explore/touch";
 import { useQuality } from "./Quality";
 
 /**
@@ -25,6 +26,12 @@ import { useQuality } from "./Quality";
 export function Effects() {
   const q = useQuality();
   const aberration = useMemo(() => new Vector2(0.00045, 0.0007), []);
+  // Bloom's mip-pyramid downsample/upsample chain rounds oddly against some
+  // mobile GPUs' non-power-of-two viewport heights, leaving a hard seam
+  // across the frame where two mip levels don't quite line up. The plain
+  // (non-mipmap) blur costs a little more but never does that.
+  const [touch, setTouch] = useState(false);
+  useEffect(() => setTouch(isTouchDevice()), []);
 
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
@@ -32,7 +39,7 @@ export function Effects() {
         intensity={1.15}
         luminanceThreshold={0.42}
         luminanceSmoothing={0.28}
-        mipmapBlur
+        mipmapBlur={!touch}
         radius={0.78}
         height={q.bloomResolution}
       />

@@ -4,8 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import { stationDrift, stationOpacity, stations, type Station } from "@/lib/content";
 import { useRafProgress } from "@/lib/scroll/useRafProgress";
 import { useScroll } from "@/lib/scroll/ScrollProvider";
-import { isTouchDevice } from "@/lib/explore/touch";
 import { StationContent } from "./StationContent";
+
+/** Short viewport — a phone on its side. The bottom-anchored layout tuned for
+ *  a tall portrait screen just runs off the top of one of these. */
+function useIsShort() {
+  const [short, setShort] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-height: 480px)");
+    const sync = () => setShort(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return short;
+}
 
 /**
  * One fixed panel per station, faded in and out by scroll position.
@@ -16,8 +29,7 @@ function StationPanel({ station }: { station: Station }) {
   const root = useRef<HTMLElement>(null);
   const inner = useRef<HTMLDivElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
-  const [isTouch, setIsTouch] = useState(false);
-  useEffect(() => setIsTouch(isTouchDevice()), []);
+  const short = useIsShort();
 
   useRafProgress((p) => {
     const el = root.current;
@@ -29,11 +41,6 @@ function StationPanel({ station }: { station: Station }) {
 
     el.style.opacity = String(o);
     el.style.transform = `translate3d(0, ${(1 - o) * 22}px, 0)`;
-
-    // On touch, the column is a real scroll container the visitor can drag
-    // through at their own pace — driving its transform from page scroll too
-    // would just fight their thumb, so leave it alone.
-    if (isTouch) return;
 
     // drift the item column through its own overflow across the station slice
     const vp = viewport.current;
@@ -49,7 +56,9 @@ function StationPanel({ station }: { station: Station }) {
       ref={root}
       aria-label={station.label}
       style={{ visibility: "hidden", opacity: 0 }}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex flex-col justify-end px-6 pb-12 pt-24 sm:px-10 lg:inset-y-0 lg:justify-center lg:pb-16 lg:pt-28"
+      className={`pointer-events-none fixed inset-x-0 z-20 flex flex-col px-6 sm:px-10 lg:inset-y-0 lg:justify-center lg:pb-16 lg:pt-28 ${
+        short ? "inset-y-0 justify-center py-4" : "bottom-0 justify-end pb-12 pt-24"
+      }`}
     >
       <div className="pointer-events-auto w-full max-w-[34rem]">
         <header>
@@ -69,20 +78,25 @@ function StationPanel({ station }: { station: Station }) {
             </span>
           </div>
 
-          <h2 className="mt-3 text-[clamp(1.6rem,3.4vw,2.5rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-white [text-shadow:0_1px_28px_rgba(0,0,0,0.75)]">
+          <h2
+            className={`mt-3 font-semibold leading-[1.04] tracking-[-0.035em] text-white [text-shadow:0_1px_28px_rgba(0,0,0,0.75)] ${
+              short ? "text-[clamp(1.15rem,3vw,1.8rem)]" : "text-[clamp(1.6rem,3.4vw,2.5rem)]"
+            }`}
+          >
             {station.title}
           </h2>
-          <p className="mt-2.5 max-w-[30rem] text-[13.5px] leading-relaxed text-white/60">
+          <p
+            className={`mt-2.5 max-w-[30rem] leading-relaxed text-white/60 ${
+              short ? "text-[12.5px]" : "text-[13.5px]"
+            }`}
+          >
             {station.body}
           </p>
         </header>
 
         <div
           ref={viewport}
-          data-lenis-prevent={isTouch || undefined}
-          className={`station-mask mt-6 max-h-[40vh] lg:max-h-[44vh] ${
-            isTouch ? "overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]" : "overflow-hidden"
-          }`}
+          className={`station-mask mt-6 overflow-hidden lg:max-h-[44vh] ${short ? "max-h-[24vh]" : "max-h-[40vh]"}`}
         >
           <div ref={inner} className="will-change-transform">
             <StationContent station={station} />
