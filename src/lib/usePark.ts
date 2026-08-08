@@ -31,10 +31,12 @@ export function usePark() {
 
     const id = window.setTimeout(() => {
       const coaster = buildCoaster();
+      const hoardings = placeHoardings(coaster);
+      const props = buildProps(coaster);
       cache = {
         coaster,
-        hoardings: placeHoardings(coaster),
-        props: buildProps(coaster),
+        hoardings,
+        props,
         progressToTau: makeProgressMap(stations, coaster.stationTau),
       };
       // The clearance audit runs against the real solved circuit and the real

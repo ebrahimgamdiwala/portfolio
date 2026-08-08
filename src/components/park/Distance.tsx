@@ -17,6 +17,7 @@ import {
 import { fbm, makeNoise2D, Rng } from "@/lib/park/rand";
 import { verticalFade } from "@/lib/park/textures";
 import { useParkCtx } from "./ParkContext";
+import { markUnique } from "@/lib/park/materials";
 
 /**
  * What is beyond the fence.
@@ -214,7 +215,7 @@ function Haze({ radius, height, opacity }: { radius: number; height: number; opa
       {/* ramped, not a flat band — a hard top edge on a haze layer is worse
           than no haze layer at all */}
       <meshBasicMaterial
-        ref={mat}
+        ref={(m) => void (mat.current = markUnique(m))}
         alphaMap={verticalFade()}
         transparent
         opacity={opacity}

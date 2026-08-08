@@ -27,7 +27,13 @@ export function ParkCanvas({ world }: { world: ParkWorld | null }) {
           toneMappingExposure: 1.02,
         }}
         camera={{ fov: 34, near: 0.6, far: PARK.far, position: [420, 250, 380] }}
-        onCreated={({ gl }) => gl.setClearColor(0x05070a, 1)}
+        onCreated={({ gl, scene, camera }) => {
+          gl.setClearColor(0x05070a, 1);
+          // draw calls, triangles and program count, for profiling
+          if (process.env.NODE_ENV === "development") {
+            Object.assign(window as never, { __gl: gl, __scene: scene, __cam: camera });
+          }
+        }}
       >
         {world ? (
           <Quality>

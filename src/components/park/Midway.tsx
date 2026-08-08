@@ -8,6 +8,7 @@ import { SLOTS, type Slot } from "@/lib/park/layout";
 import { neonText, panel } from "@/lib/park/sign";
 import { stripes } from "@/lib/park/textures";
 import { Rng } from "@/lib/park/rand";
+import { markUnique } from "@/lib/park/materials";
 
 /**
  * The midway and the prize row.
@@ -124,7 +125,7 @@ function Stall({ item, slot, accent, index }: { item: StationItem; slot: Slot; a
       <mesh position={[0, 10.2, 0.6]}>
         <planeGeometry args={[13, 2.6]} />
         <meshBasicMaterial
-          ref={flicker}
+          ref={(m) => void (flicker.current = markUnique(m))}
           map={sign}
           transparent
           depthWrite={false}

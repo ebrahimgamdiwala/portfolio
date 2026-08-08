@@ -17,6 +17,7 @@ import { PARK, ZONES } from "@/lib/park/layout";
 import { MAP_SPAN, parkMap } from "@/lib/park/parkMap";
 import { useParkCtx } from "./ParkContext";
 import { useQuality } from "./Quality";
+import { markUnique } from "@/lib/park/materials";
 
 /**
  * The floor of the park, and the single biggest contributor to the whole thing
@@ -118,7 +119,7 @@ export function Ground() {
       <mesh position={[0, 0.16, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={3}>
         <planeGeometry args={[size, size]} />
         <meshBasicMaterial
-          ref={outfield}
+          ref={(m) => void (outfield.current = markUnique(m))}
           color="#0a0b16"
           alphaMap={outfieldFade()}
           transparent

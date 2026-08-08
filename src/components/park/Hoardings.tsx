@@ -10,6 +10,7 @@ import type { Piece } from "@/lib/park/coaster";
 import { paintedSteel } from "@/lib/park/textures";
 import { Pieces } from "./primitives/Pieces";
 import { useParkCtx } from "./ParkContext";
+import { markUnique } from "@/lib/park/materials";
 
 /**
  * THE AD HOARDINGS.
@@ -96,7 +97,7 @@ function Board({ h }: { h: Hoarding }) {
       <mesh castShadow receiveShadow>
         <planeGeometry args={[BOARD_W, BOARD_H]} />
         <meshStandardMaterial
-          ref={face}
+          ref={(m) => void (face.current = markUnique(m))}
           map={tex}
           emissiveMap={tex}
           emissive="#ffffff"
@@ -132,7 +133,7 @@ function Board({ h }: { h: Hoarding }) {
           <mesh position={[0, 4.6, -0.4]} rotation={[Math.PI - 0.1, 0, 0]}>
             <coneGeometry args={[1.25, 9, 12, 1, true]} />
             <meshBasicMaterial
-              ref={(m) => void (beams.current[i] = m)}
+              ref={(m) => void (beams.current[i] = markUnique(m))}
               color="#ffe6bb"
               transparent
               opacity={0}

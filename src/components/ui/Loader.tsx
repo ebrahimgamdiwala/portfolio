@@ -9,7 +9,7 @@ import { meta } from "@/lib/content";
  * counter is time-based rather than fake-random so it always finishes on the
  * real handoff.
  */
-export function Loader({ ready }: { ready: boolean }) {
+export function Loader({ ready, progress = 0 }: { ready: boolean; progress?: number }) {
   const [pct, setPct] = useState(0);
   const [gone, setGone] = useState(false);
 
@@ -18,14 +18,16 @@ export function Loader({ ready }: { ready: boolean }) {
     const start = performance.now();
     const tick = () => {
       const elapsed = performance.now() - start;
-      // creep toward 92% while generating, then snap home
-      const creep = 92 * (1 - Math.exp(-elapsed / 900));
-      setPct((p) => Math.max(p, ready ? Math.min(100, p + 6) : creep));
+      // Real progress once the park starts mounting; before that a gentle
+      // creep, so the bar is never ahead of the work it is reporting.
+      const creep = 24 * (1 - Math.exp(-elapsed / 700));
+      const staged = 24 + progress * 74;
+      setPct((p) => Math.max(p, ready ? Math.min(100, p + 6) : Math.max(creep, staged)));
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [ready]);
+  }, [ready, progress]);
 
   useEffect(() => {
     if (pct >= 100) {

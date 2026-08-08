@@ -6,6 +6,7 @@ import { MathUtils, PerspectiveCamera, Vector3 } from "three";
 import { buildMarkers, type Marker } from "@/lib/explore/markers";
 import { explore, seats, useExplore } from "@/lib/explore/store";
 import { resolve } from "@/lib/explore/collide";
+import { drainLook, touch } from "@/lib/explore/touch";
 import { PARK } from "@/lib/park/layout";
 
 /**
@@ -206,6 +207,14 @@ export function ExploreCamera() {
     const step = Math.min(dt, 0.05);
 
     /* ── strapped in ─────────────────────────────────────────────────────── */
+
+    // Touch look, drained each frame so a late frame still gets the whole
+    // gesture rather than only its final event.
+    const swipe = drainLook();
+    if (swipe.x || swipe.y) {
+      yaw.current -= swipe.x * 0.005;
+      pitch.current = MathUtils.clamp(pitch.current - swipe.y * 0.004, -1.1, 0.9);
+    }
 
     if (riding && seats[riding]) {
       const seat = seats[riding];

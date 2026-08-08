@@ -76,7 +76,7 @@ export function ExploreMap() {
         <div className="pointer-events-auto overflow-hidden rounded-2xl border border-white/12 bg-black/65 backdrop-blur-xl">
           <svg
             viewBox={`${-SPAN} ${-SPAN} ${SPAN * 2} ${SPAN * 2}`}
-            className="h-[15rem] w-[15rem] sm:h-[17rem] sm:w-[17rem]"
+            className="h-[9rem] w-[9rem] landscape:h-[10rem] landscape:w-[10rem] sm:h-[15rem] sm:w-[15rem] md:h-[17rem] md:w-[17rem]"
             role="img"
             aria-label="Map of the park"
           >

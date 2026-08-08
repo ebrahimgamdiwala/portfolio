@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { meta } from "@/lib/content";
 import { buildMarkers } from "@/lib/explore/markers";
@@ -8,6 +8,8 @@ import { explore, useExplore } from "@/lib/explore/store";
 import { useScroll } from "@/lib/scroll/ScrollProvider";
 import { useRafProgress } from "@/lib/scroll/useRafProgress";
 import { ExploreMap } from "./ExploreMap";
+import { MobileControls } from "./MobileControls";
+import { isTouchDevice } from "@/lib/explore/touch";
 
 /**
  * Everything explore mode says out loud.
@@ -199,6 +201,10 @@ function Card() {
 function Hud() {
   const { selected, riding, pointerLocked, hovered } = useExplore();
   const free = !selected && !riding;
+  // MobileControls draws its own crosshair and hint; two sets of instructions,
+  // one of them telling a phone to click, is worse than none.
+  const [touchUi, setTouchUi] = useState(false);
+  useEffect(() => setTouchUi(isTouchDevice()), []);
 
   return (
     <motion.div
@@ -221,7 +227,7 @@ function Hud() {
       </div>
 
       {/* crosshair — the thing you aim markers with */}
-      {free && pointerLocked && (
+      {free && pointerLocked && !touchUi && (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <div
             className="rounded-full border transition-all duration-200"
@@ -236,7 +242,7 @@ function Hud() {
       )}
 
       <AnimatePresence>
-        {free && (
+        {free && !touchUi && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -276,6 +282,7 @@ export function ExploreLayer() {
       <AnimatePresence>{mode === "explore" && <Hud key="hud" />}</AnimatePresence>
       <AnimatePresence>{mode === "explore" && <Card />}</AnimatePresence>
       <ExploreMap />
+      <MobileControls />
     </>
   );
 }

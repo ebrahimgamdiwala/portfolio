@@ -9,6 +9,7 @@ import { StationLayer } from "./ui/StationLayer";
 import { Loader } from "./ui/Loader";
 import { ExploreLayer } from "./ui/ExploreLayer";
 import { useExplore } from "@/lib/explore/store";
+import { useBoot } from "@/lib/park/boot";
 
 const ParkCanvas = dynamic(
   () => import("./park/ParkCanvas").then((m) => m.ParkCanvas),
@@ -21,6 +22,7 @@ const SCROLL_VH = 1300;
 function Stage() {
   const world = usePark();
   const { mode } = useExplore();
+  const bootState = useBoot();
   const riding = mode === "ride";
 
   return (
@@ -30,7 +32,7 @@ function Stage() {
       {riding && <Hero />}
       {riding && <StationLayer />}
       <ExploreLayer />
-      <Loader ready={!!world} />
+      <Loader ready={!!world && bootState.done} progress={bootState.stage / bootState.total} />
       <div style={{ height: `${SCROLL_VH}vh` }} aria-hidden />
     </>
   );

@@ -12,6 +12,8 @@ import { buildLights } from "@/lib/park/lights";
 import { makeRideState } from "@/lib/park/ride";
 import { makeSkyState, sampleSky } from "@/lib/park/sky";
 import { applyAnisotropy } from "@/lib/park/textures";
+import { shareMaterials } from "@/lib/park/materials";
+import { useStagedMount } from "@/lib/park/boot";
 import { ParkProvider } from "./ParkContext";
 import { RideCamera } from "./RideCamera";
 import { ExploreCamera } from "./ExploreCamera";
@@ -47,6 +49,9 @@ export function Scene({ world }: { world: ParkWorld }) {
   const q = useQuality();
   const { mode } = useExplore();
 
+  // The park mounts a stage per painted frame — see lib/park/boot.ts.
+  const stage = useStagedMount(8);
+
   const ride = useRef(makeRideState());
   const sky = useRef(makeSkyState());
   const sun = useRef<DirectionalLight>(null);
@@ -67,6 +72,20 @@ export function Scene({ world }: { world: ParkWorld }) {
       envRig.dispose();
     };
   }, [scene, fog, gl, envRig]);
+
+  // Collapse duplicate materials once the tree has mounted. Run after a tick
+  // so every child has created its own before we look. Re-run on mode changes,
+  // since explore mode mounts markers that were not there before.
+  useEffect(() => {
+    if (stage < 8) return;
+    const id = window.setTimeout(() => {
+      const s = shareMaterials(scene);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[PROFILE] shareMaterials ${s.before} -> ${s.after} over ${s.meshes} meshes`);
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [scene, mode, stage]);
 
   useFrame((state) => {
     const p = eased.current;
@@ -150,26 +169,38 @@ export function Scene({ world }: { world: ParkWorld }) {
       <LightPool sources={lights} />
 
       <Sky sky={sky} />
-      <Ground />
-      <Distance />
+      {stage > 0 && <Ground />}
+      {stage > 1 && <Distance />}
 
-      <Coaster coaster={coaster} />
-      <SplashTunnel
-        coaster={coaster}
-        from={(coaster.stationU[park.splash.station] ?? 0.6) + park.splash.offset}
-        length={park.splash.length}
-      />
-      <Train coaster={coaster} ride={ride} />
+      {stage > 2 && (
+        <>
+          <Coaster coaster={coaster} />
+          <SplashTunnel
+            coaster={coaster}
+            from={(coaster.stationU[park.splash.station] ?? 0.6) + park.splash.offset}
+            length={park.splash.length}
+          />
+          <Train coaster={coaster} ride={ride} />
+        </>
+      )}
 
-      <Structures coaster={coaster} />
-      <Attractions />
-      <Funfair />
-      <Midway />
-      <Hoardings hoardings={hoardings} />
-      <Props set={props} />
+      {stage > 3 && <Structures coaster={coaster} />}
+      {stage > 4 && <Attractions />}
+      {stage > 5 && <Funfair />}
+      {stage > 6 && (
+        <>
+          <Midway />
+          <Hoardings hoardings={hoardings} />
+        </>
+      )}
+      {stage > 7 && (
+        <>
+          <Props set={props} />
+          <Atmosphere />
+          <Fireworks />
+        </>
+      )}
 
-      <Atmosphere />
-      <Fireworks />
       <Effects />
     </ParkProvider>
   );

@@ -28,6 +28,7 @@ import { SLOTS, type Slot } from "@/lib/park/layout";
 import { neonText, panel } from "@/lib/park/sign";
 import { paintedSteel } from "@/lib/park/textures";
 import { Pieces } from "./primitives/Pieces";
+import { markUnique } from "@/lib/park/materials";
 
 /**
  * THE HEADLINE RIDES.
@@ -462,7 +463,7 @@ function DropTower({ slot, accent, item }: { slot: Slot; accent: string; item: S
       </mesh>
       <mesh position={[0, TOWER_H + 9, 0]}>
         <sphereGeometry args={[1.5, 12, 10]} />
-        <meshBasicMaterial ref={beacon} color="#ff3b30" transparent toneMapped={false} />
+        <meshBasicMaterial ref={(m) => void (beacon.current = markUnique(m))} color="#ff3b30" transparent toneMapped={false} />
       </mesh>
 
       <Panel
