@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { stationDrift, stationOpacity, stations, type Station } from "@/lib/content";
 import { useRafProgress } from "@/lib/scroll/useRafProgress";
 import { useScroll } from "@/lib/scroll/ScrollProvider";
+import { isTouchDevice } from "@/lib/explore/touch";
 import { StationContent } from "./StationContent";
 
 /**
@@ -15,6 +16,8 @@ function StationPanel({ station }: { station: Station }) {
   const root = useRef<HTMLElement>(null);
   const inner = useRef<HTMLDivElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => setIsTouch(isTouchDevice()), []);
 
   useRafProgress((p) => {
     const el = root.current;
@@ -26,6 +29,11 @@ function StationPanel({ station }: { station: Station }) {
 
     el.style.opacity = String(o);
     el.style.transform = `translate3d(0, ${(1 - o) * 22}px, 0)`;
+
+    // On touch, the column is a real scroll container the visitor can drag
+    // through at their own pace — driving its transform from page scroll too
+    // would just fight their thumb, so leave it alone.
+    if (isTouch) return;
 
     // drift the item column through its own overflow across the station slice
     const vp = viewport.current;
@@ -71,7 +79,10 @@ function StationPanel({ station }: { station: Station }) {
 
         <div
           ref={viewport}
-          className="station-mask mt-6 max-h-[40vh] overflow-hidden lg:max-h-[44vh]"
+          data-lenis-prevent={isTouch || undefined}
+          className={`station-mask mt-6 max-h-[40vh] lg:max-h-[44vh] ${
+            isTouch ? "overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]" : "overflow-hidden"
+          }`}
         >
           <div ref={inner} className="will-change-transform">
             <StationContent station={station} />

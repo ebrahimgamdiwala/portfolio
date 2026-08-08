@@ -321,10 +321,20 @@ export function ExploreCamera() {
 
     let inputFwd = 0;
     let inputSide = 0;
+    let analogSpeed = 1;
     if (keys.current.has("w")) inputFwd += 1;
     if (keys.current.has("s")) inputFwd -= 1;
     if (keys.current.has("d")) inputSide += 1;
     if (keys.current.has("a")) inputSide -= 1;
+
+    // Touch thumbstick, only when the keyboard is idle. It writes analog axes
+    // rather than a digital -1/0/1, so a light tilt should walk slower than a
+    // full push instead of always snapping to top speed.
+    if (inputFwd === 0 && inputSide === 0 && (touch.moveX || touch.moveY)) {
+      inputFwd = touch.moveY;
+      inputSide = touch.moveX;
+      analogSpeed = MathUtils.clamp(Math.hypot(touch.moveX, touch.moveY), 0, 1);
+    }
 
     const hasInput = inputFwd !== 0 || inputSide !== 0;
 
@@ -358,8 +368,8 @@ export function ExploreCamera() {
         const moveDirX = -sinY * nFwd + cosY * nSide;
         const moveDirZ = -cosY * nFwd - sinY * nSide;
 
-        targetX = moveDirX * speed;
-        targetZ = moveDirZ * speed;
+        targetX = moveDirX * speed * analogSpeed;
+        targetZ = moveDirZ * speed * analogSpeed;
       }
 
       // Smooth, responsive acceleration and deceleration

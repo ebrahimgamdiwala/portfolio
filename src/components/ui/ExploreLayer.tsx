@@ -41,21 +41,22 @@ function Invitation() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.9, ease }}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-10"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-2 sm:px-6 sm:pb-10"
     >
       <button
         type="button"
         onClick={explore.enter}
-        className="pointer-events-auto group flex items-center gap-4 rounded-full border border-white/20 bg-black/55 px-6 py-3 backdrop-blur-md transition-colors hover:border-white/50"
+        className="pointer-events-auto group flex max-w-[92vw] items-center gap-2.5 rounded-full border border-white/20 bg-black/55 px-4 py-2 backdrop-blur-md transition-colors hover:border-white/50 sm:gap-4 sm:px-6 sm:py-3"
       >
-        <span className="relative flex h-2 w-2">
+        <span className="relative flex h-2 w-2 shrink-0">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300/70" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-300" />
         </span>
-        <span className="font-mono text-[11px] uppercase tracking-widest2 text-white/85">
-          The park is open — explore on foot
+        <span className="truncate font-mono text-[10px] uppercase tracking-widest text-white/85 sm:text-[11px] sm:tracking-widest2">
+          <span className="hidden sm:inline">The park is open — </span>
+          Explore on foot
         </span>
-        <span className="font-mono text-[11px] text-white/45 transition-transform duration-300 group-hover:translate-x-1">
+        <span className="shrink-0 font-mono text-[11px] text-white/45 transition-transform duration-300 group-hover:translate-x-1">
           →
         </span>
       </button>
@@ -69,10 +70,46 @@ function Card() {
   const { selected, riding } = useExplore();
   const markers = useMemo(() => buildMarkers(), []);
   const marker = markers.find((m) => m.id === selected);
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => setIsTouch(isTouchDevice()), []);
   if (!marker) return null;
 
   const item = marker.item;
   const isContact = marker.kind === "gate";
+
+  // On a phone, once you're actually strapped into the ride, the full info
+  // card just blocks the view of the thing you came to see — drop down to
+  // the two controls that still matter.
+  if (isTouch && riding) {
+    return (
+      <motion.div
+        key={`${marker.id}-riding`}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 10 }}
+        transition={{ duration: 0.4, ease }}
+        className="pointer-events-none fixed inset-x-0 bottom-16 z-50 flex justify-center gap-3 px-4"
+      >
+        {marker.boardable && (
+          <button
+            type="button"
+            onClick={() => explore.ride(null)}
+            className="pointer-events-auto rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-widest2 text-black transition-opacity hover:opacity-85"
+            style={{ background: marker.accent }}
+          >
+            Get off
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => explore.select(null)}
+          className="pointer-events-auto rounded-full border border-white/15 bg-black/55 px-4 py-2 font-mono text-[10px] uppercase tracking-widest2 text-white/70 backdrop-blur-md transition-colors hover:text-white"
+        >
+          Back to the park
+        </button>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.aside
@@ -81,9 +118,12 @@ function Card() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -28 }}
       transition={{ duration: 0.55, ease }}
-      className="pointer-events-auto fixed bottom-0 left-0 top-0 z-40 flex w-full max-w-[26rem] flex-col justify-center px-6 sm:px-10"
+      className="pointer-events-auto fixed bottom-0 left-0 top-0 z-40 flex w-full max-w-[26rem] flex-col justify-center px-4 py-6 sm:px-10 sm:py-0"
     >
-      <div className="rounded-2xl border border-white/12 bg-black/72 p-6 backdrop-blur-xl">
+      <div
+        data-lenis-prevent
+        className="max-h-[88dvh] overflow-y-auto rounded-2xl border border-white/12 bg-black/72 p-4 backdrop-blur-xl sm:p-6"
+      >
         <div className="flex items-center gap-3">
           <span
             className="h-2.5 w-2.5 rounded-full"
@@ -97,7 +137,7 @@ function Card() {
           </span>
         </div>
 
-        <h2 className="mt-3 text-[clamp(1.3rem,3vw,1.9rem)] font-semibold leading-tight tracking-[-0.03em] text-white">
+        <h2 className="mt-2 text-[clamp(1.1rem,3vw,1.9rem)] font-semibold leading-tight tracking-[-0.03em] text-white sm:mt-3">
           {isContact ? "Let's build something" : (item?.title ?? marker.station.title)}
         </h2>
 
@@ -107,10 +147,10 @@ function Card() {
           </p>
         )}
 
-        <p className="mt-3 text-[13px] leading-relaxed text-white/55">{marker.hint}</p>
+        <p className="mt-2 text-[13px] leading-relaxed text-white/55 sm:mt-3">{marker.hint}</p>
 
         {isContact ? (
-          <div className="mt-5 space-y-4">
+          <div className="mt-4 space-y-3 sm:mt-5 sm:space-y-4">
             <a
               href={`mailto:${meta.email}`}
               className="group block text-[15px] font-medium text-white"
@@ -138,7 +178,10 @@ function Card() {
         ) : (
           <>
             {item?.points?.length ? (
-              <ul className="mt-4 max-h-[34vh] space-y-2 overflow-y-auto pr-1">
+              <ul
+                data-lenis-prevent
+                className="mt-3 max-h-[22vh] space-y-1.5 overflow-y-auto pr-1 sm:mt-4 sm:max-h-[34vh] sm:space-y-2"
+              >
                 {item.points.map((p) => (
                   <li
                     key={p}
@@ -152,7 +195,7 @@ function Card() {
             ) : null}
 
             {item?.tags?.length ? (
-              <div className="mt-4 flex flex-wrap gap-1.5">
+              <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4">
                 {item.tags.map((t) => (
                   <span
                     key={t}
@@ -165,14 +208,14 @@ function Card() {
             ) : null}
 
             {item?.note || item?.result ? (
-              <p className="mt-4 text-[12.5px] text-white/50">
+              <p className="mt-3 text-[12.5px] text-white/50 sm:mt-4">
                 {[item.result, item.note].filter(Boolean).join(" · ")}
               </p>
             ) : null}
           </>
         )}
 
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-4 flex items-center gap-3 sm:mt-6">
           {marker.boardable && (
             <button
               type="button"

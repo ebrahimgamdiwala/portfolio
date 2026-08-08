@@ -1,6 +1,6 @@
 "use client";
 
-import { AdaptiveDpr, PerformanceMonitor } from "@react-three/drei";
+import { PerformanceMonitor } from "@react-three/drei";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 export type Tier = "high" | "medium" | "low";
@@ -107,7 +107,6 @@ export function Quality({ children }: { children: ReactNode }) {
           flipflops={3}
         />
       )}
-      <AdaptiveDpr pixelated />
       <Ctx.Provider value={{ tier, calm, ...SETTINGS[tier] }}>{children}</Ctx.Provider>
     </>
   );

@@ -21,7 +21,10 @@ export function Hero() {
   useRafProgress((p) => {
     const el = ref.current;
     if (!el) return;
-    const t = Math.min(1, Math.max(0, p / 0.045));
+    // A small dead-zone: mobile browsers often report a sliver of scroll on
+    // first paint (address-bar collapse, layout settling), which used to be
+    // enough to visibly blur the name before the visitor has scrolled at all.
+    const t = Math.min(1, Math.max(0, (p - 0.006) / 0.045));
     el.style.opacity = String(1 - t);
     el.style.transform = `translate3d(0, ${-t * 40}px, 0)`;
     el.style.filter = `blur(${t * 7}px)`;

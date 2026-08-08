@@ -63,6 +63,16 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
     });
     lenisRef.current = lenis;
 
+    // Mobile browsers can nudge scroll by a few px after first paint as the
+    // address bar collapses or web fonts settle the layout. Re-pin to the top
+    // once that's had a chance to happen, so the ride never starts mid-blur.
+    const resnap = () => {
+      window.scrollTo(0, 0);
+      lenis.scrollTo(0, { immediate: true, force: true });
+    };
+    const resnapFrame = requestAnimationFrame(() => requestAnimationFrame(resnap));
+    window.addEventListener("pageshow", resnap);
+
     // Lenis owns the scroll position outright and `eased` is damped over ~50
     // frames, so there is no way to park the ride at an exact point from
     // outside without a handle on both. Development only — it is what the
@@ -126,6 +136,8 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      cancelAnimationFrame(resnapFrame);
+      window.removeEventListener("pageshow", resnap);
       lenis.destroy();
       lenisRef.current = null;
     };
