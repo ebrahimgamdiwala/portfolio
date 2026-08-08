@@ -49,7 +49,7 @@ const FRAMING: Record<string, { hover: number; back: number; eye: number }> = {
   swingRide: { hover: 22, back: 52, eye: 18 },
   pirateShip: { hover: 22, back: 42, eye: 18 },
   machineHall: { hover: 30, back: 68, eye: 22 },
-  mainStage: { hover: 26, back: 60, eye: 18 },
+  mainStage: { hover: 26, back: 38, eye: 15 },
   scoreboard: { hover: 22, back: 46, eye: 16 },
   stall: { hover: 13, back: 22, eye: 7 },
   plinth: { hover: 14, back: 20, eye: 8 },

@@ -38,7 +38,6 @@ function Pin({ marker, state }: { marker: Marker; state: PinState }) {
   const root = useRef<Group>(null);
   const group = useRef<Group>(null);
   const ring = useRef<Mesh>(null);
-  const fade = useRef(-1);
   const { camera } = useThree();
 
   const label = useMemo(
@@ -74,15 +73,18 @@ function Pin({ marker, state }: { marker: Marker; state: PinState }) {
     g.rotation.y = Math.atan2(camPos.x - marker.pos[0], camPos.z - marker.pos[2]);
 
     // and fade out over the last stretch rather than popping
-    const f = MathUtilsClamp((FADE_FAR - dist) / (FADE_FAR - FADE_NEAR), 0, 1);
-    if (fade.current !== f) {
-      fade.current = f;
-      g.traverse((o) => {
-        const m = (o as Mesh).material as { opacity?: number; userData?: never } | undefined;
-        const base = (o as Mesh).userData?.baseOpacity as number | undefined;
-        if (m && base !== undefined) m.opacity = base * f;
-      });
+    let f = MathUtilsClamp((FADE_FAR - dist) / (FADE_FAR - FADE_NEAR), 0, 1);
+    
+    // exempt the active marker so it doesn't fade when the camera pulls back
+    if (state === "open" || state === "aimed") {
+      f = 1;
     }
+
+    g.traverse((o) => {
+      const m = (o as Mesh).material as { opacity?: number; userData?: never } | undefined;
+      const base = (o as Mesh).userData?.baseOpacity as number | undefined;
+      if (m && base !== undefined) m.opacity = base * f;
+    });
 
     if (ring.current) ring.current.rotation.z = t * 0.5;
   });

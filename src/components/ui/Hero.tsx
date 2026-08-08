@@ -36,18 +36,18 @@ export function Hero() {
       ref={ref}
       className="pointer-events-none fixed inset-0 z-20 flex h-[100dvh] flex-col justify-end px-6 pb-16 sm:px-10 sm:pb-20 lg:justify-center lg:pb-0"
     >
-      <div className="max-w-3xl">
+      <div className="max-w-3xl shrink-0">
         <motion.p
           custom={0}
           variants={rise}
           initial="hidden"
           animate="show"
-          className="mb-5 font-mono text-[11px] uppercase tracking-widest2 text-white/45"
+          className="mb-5 [@media(max-height:500px)]:mb-2 font-mono text-[11px] uppercase tracking-widest2 text-white/45"
         >
           {hero.eyebrow}
         </motion.p>
 
-        <h1 className="font-sans text-[clamp(2.6rem,9vw,7.5rem)] font-semibold leading-[0.88] tracking-[-0.045em] text-white">
+        <h1 className="font-sans text-[clamp(2.6rem,min(9vw,12vh),7.5rem)] font-semibold leading-[0.88] tracking-[-0.045em] text-white">
           {hero.titleLines.map((line, i) => (
             <motion.span
               key={line}
@@ -67,7 +67,7 @@ export function Hero() {
           variants={rise}
           initial="hidden"
           animate="show"
-          className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-2"
+          className="mt-7 [@media(max-height:500px)]:mt-3 flex flex-wrap items-center gap-x-4 gap-y-2"
         >
           <span className="font-mono text-[11px] uppercase tracking-widest2 text-white/70">
             {hero.subtitle}
@@ -83,7 +83,7 @@ export function Hero() {
           variants={rise}
           initial="hidden"
           animate="show"
-          className="mt-6 max-w-md text-[15px] leading-relaxed text-white/60"
+          className="mt-6 [@media(max-height:500px)]:mt-3 max-w-md text-[15px] leading-relaxed text-white/60"
         >
           {hero.blurb}
         </motion.p>
@@ -93,7 +93,7 @@ export function Hero() {
           variants={rise}
           initial="hidden"
           animate="show"
-          className="mt-10 flex gap-10"
+          className="mt-10 [@media(max-height:500px)]:mt-4 flex gap-10"
         >
           {hero.stats.map((s) => (
             <div key={s.label}>
@@ -110,7 +110,7 @@ export function Hero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.7, duration: 1.2 }}
-        className="absolute bottom-8 right-6 flex items-center gap-3 sm:right-10"
+        className="absolute bottom-8 right-6 flex items-center gap-3 sm:right-10 [@media(max-height:500px)]:bottom-4"
       >
         <span className="font-mono text-[10px] uppercase tracking-widest2 text-white/40">
           {hero.scrollHint}
@@ -122,3 +122,4 @@ export function Hero() {
     </div>
   );
 }
+
