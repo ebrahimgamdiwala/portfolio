@@ -54,6 +54,7 @@ const FRAMING: Record<string, { hover: number; back: number; eye: number }> = {
   stall: { hover: 13, back: 22, eye: 7 },
   plinth: { hover: 14, back: 20, eye: 8 },
   gate: { hover: 42, back: 74, eye: 26 },
+  bumperCars: { hover: 20, back: 42, eye: 14 },
 };
 
 /** Aim volume per structure — roughly what the thing occupies on screen. */
@@ -71,6 +72,7 @@ const AIM_RADIUS: Record<string, number> = {
   stall: 10,
   plinth: 8,
   gate: 34,
+  bumperCars: 30,
 };
 
 const ACTIONS: Record<string, { action: string; hint: string }> = {
@@ -125,6 +127,10 @@ const ACTIONS: Record<string, { action: string; hint: string }> = {
   gate: {
     action: "Sign the guest book",
     hint: "Where to find me when the park closes.",
+  },
+  bumperCars: {
+    action: "Take a drive",
+    hint: "Hop into a dodgem and ride around the grid.",
   },
 };
 
@@ -208,6 +214,12 @@ export function buildMarkers(): Marker[] {
     const marker = place(slot, "pirateShip", `pirate-ship:${i}`, "PIRATE GALLEON", stations[0]);
     marker.boardable = true;
     marker.rideId = `pirateShip${i}`;
+    out.push(marker);
+  });
+  FURNITURE.bumperCars.forEach((slot, i) => {
+    const marker = place(slot, "bumperCars", `bumper-cars:${i}`, "BUMPER CARS", stations[0]);
+    marker.boardable = true;
+    marker.rideId = `bumperCars${i}`;
     out.push(marker);
   });
 

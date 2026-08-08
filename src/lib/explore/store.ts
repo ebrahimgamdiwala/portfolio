@@ -82,6 +82,8 @@ export const explore = {
  * a ref-style handoff, because routing a moving seat through React state sixty
  * times a second would be absurd.
  */
+export const userDrive = { fwd: 0, turn: 0 };
+
 export const seats: Record<string, { pos: Vector3; yaw: number }> = {
   dropTower: { pos: new Vector3(), yaw: 0 },
   ferrisWheel: { pos: new Vector3(), yaw: 0 },
@@ -94,4 +96,6 @@ export const seats: Record<string, { pos: Vector3; yaw: number }> = {
   swingRide0: { pos: new Vector3(), yaw: 0 },
   swingRide1: { pos: new Vector3(), yaw: 0 },
   pirateShip0: { pos: new Vector3(), yaw: 0 },
+  bumperCars0: { pos: new Vector3(), yaw: 0 },
+  bumperCars1: { pos: new Vector3(), yaw: 0 },
 };

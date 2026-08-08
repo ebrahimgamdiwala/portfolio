@@ -23,7 +23,7 @@ import { paintedSteel, stripes } from "@/lib/park/textures";
 import { Rng } from "@/lib/park/rand";
 import { horseCoat, horseTack } from "@/lib/park/horse";
 import { neonText } from "@/lib/park/sign";
-import { explore, seats } from "@/lib/explore/store";
+import { explore, seats, userDrive } from "@/lib/explore/store";
 import { Pieces } from "./primitives/Pieces";
 
 /**
@@ -386,11 +386,11 @@ function Teacups({ slot, seed, index }: { slot: Slot; seed: number; index: numbe
 
 /* ── bumper cars ──────────────────────────────────────────────────────────── */
 
-function BumperCars({ slot }: { slot: Slot }) {
+function BumperCars({ slot, index }: { slot: Slot; index: number }) {
   const cars = useRef<(Group | null)[]>([]);
   const W = 34;
   const D = 24;
-  const COUNT = 12;
+  const COUNT = 5;
 
   const posts = useMemo(() => {
     const out: Piece[] = [];
@@ -409,24 +409,123 @@ function BumperCars({ slot }: { slot: Slot }) {
   }, []);
 
   const seeds = useMemo(() => {
-    const rng = new Rng(404);
-    return Array.from({ length: COUNT }, () => ({
-      r: rng.range(3, W / 2 - 4),
-      a: rng.range(0, Math.PI * 2),
-      s: rng.range(0.5, 1.3) * rng.sign(),
-      c: CANDY[rng.int(CANDY.length)],
-    }));
-  }, []);
-
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    cars.current.forEach((c, i) => {
-      if (!c) return;
-      const s = seeds[i];
-      const a = s.a + t * s.s * 0.5;
-      c.position.set(Math.cos(a) * s.r, 0.8, (Math.sin(a) * s.r * D) / W);
-      c.rotation.y = -a + Math.PI / 2;
+    const rng = new Rng(404 + index);
+    return Array.from({ length: COUNT }, (_, i) => {
+      const angle = (i / COUNT) * Math.PI * 2;
+      const radius = 6 + (i % 2) * 3;
+      return {
+        x: Math.cos(angle) * radius,
+        z: Math.sin(angle) * radius,
+        vx: 0,
+        vz: 0,
+        yaw: angle + Math.PI / 2,
+        c: CANDY[(i * 2 + index) % CANDY.length],
+        aiTimer: rng.range(0, 2),
+      };
     });
+  }, [index]);
+
+  const phys = useRef(seeds);
+
+  useFrame((_, dt) => {
+    const step = Math.min(dt, 0.05);
+    const ridingKey = `bumperCars${index}`;
+    const isPlayerRiding = explore.state.riding === ridingKey;
+
+    phys.current.forEach((car, i) => {
+      if (i === 0 && isPlayerRiding) {
+        // Player input controls car 0
+        car.yaw += userDrive.turn * step * 3.2;
+        if (userDrive.fwd !== 0) {
+          const accel = userDrive.fwd * 38 * step;
+          car.vx += Math.sin(car.yaw) * accel;
+          car.vz += Math.cos(car.yaw) * accel;
+        }
+      } else {
+        // AI cars wander, turn & accelerate
+        car.aiTimer -= step;
+        if (car.aiTimer <= 0) {
+          car.aiTimer = 1.5 + Math.random() * 2.5;
+          car.yaw += (Math.random() - 0.5) * 2.5;
+        }
+        const speed = 12;
+        car.vx += Math.sin(car.yaw) * speed * step;
+        car.vz += Math.cos(car.yaw) * speed * step;
+      }
+
+      // Drag / friction
+      car.vx *= Math.pow(0.2, step);
+      car.vz *= Math.pow(0.2, step);
+
+      // Integrate position
+      car.x += car.vx * step;
+      car.z += car.vz * step;
+
+      // Arena walls bounds check
+      const boundX = W / 2 - 2.2;
+      const boundZ = D / 2 - 2.2;
+      if (Math.abs(car.x) > boundX) {
+        car.x = Math.sign(car.x) * boundX;
+        car.vx = -car.vx * 0.7;
+        car.yaw = Math.atan2(-car.vx, car.vz);
+      }
+      if (Math.abs(car.z) > boundZ) {
+        car.z = Math.sign(car.z) * boundZ;
+        car.vz = -car.vz * 0.7;
+        car.yaw = Math.atan2(car.vx, -car.vz);
+      }
+    });
+
+    // Car to Car collisions (bumping mechanics!)
+    for (let i = 0; i < COUNT; i++) {
+      for (let j = i + 1; j < COUNT; j++) {
+        const c1 = phys.current[i];
+        const c2 = phys.current[j];
+        const dx = c2.x - c1.x;
+        const dz = c2.z - c1.z;
+        const dist = Math.hypot(dx, dz);
+        const minDist = 2.8;
+        if (dist < minDist && dist > 0.001) {
+          const nx = dx / dist;
+          const nz = dz / dist;
+          const overlap = (minDist - dist) * 0.5;
+          c1.x -= nx * overlap;
+          c1.z -= nz * overlap;
+          c2.x += nx * overlap;
+          c2.z += nz * overlap;
+
+          const relVx = c2.vx - c1.vx;
+          const relVz = c2.vz - c1.vz;
+          const impulse = (relVx * nx + relVz * nz) * 1.3;
+          if (impulse < 0) {
+            c1.vx += nx * impulse;
+            c1.vz += nz * impulse;
+            c2.vx -= nx * impulse;
+            c2.vz -= nz * impulse;
+          }
+        }
+      }
+    }
+
+    // Apply positions & rotations to 3D meshes
+    cars.current.forEach((group, i) => {
+      if (!group) return;
+      const p = phys.current[i];
+      group.position.set(p.x, 0.3, p.z);
+      group.rotation.y = p.yaw;
+    });
+
+    // Publish seat 0 for ExploreCamera
+    const lead = phys.current[0];
+    if (seats[ridingKey]) {
+      const cosR = Math.cos(slot.rot);
+      const sinR = Math.sin(slot.rot);
+      const worldDx = lead.x * cosR + lead.z * sinR;
+      const worldDz = -lead.x * sinR + lead.z * cosR;
+
+      seats[ridingKey].pos.set(slot.x + worldDx, 0.3, slot.z + worldDz);
+      seats[ridingKey].yaw = slot.rot + lead.yaw;
+    }
   });
 
   return (
@@ -450,13 +549,113 @@ function BumperCars({ slot }: { slot: Slot }) {
 
       {seeds.map((s, i) => (
         <group key={i} ref={(el) => void (cars.current[i] = el)}>
-          <mesh castShadow>
-            <cylinderGeometry args={[1.5, 1.7, 1.1, 14]} />
-            <meshPhysicalMaterial color={s.c} roughness={0.25} metalness={0.3} clearcoat={0.8} />
+          {/* Heavy rubber bumper skirt */}
+          <mesh position={[0, 0.25, 0]} receiveShadow>
+            <boxGeometry args={[2.1, 0.35, 2.9]} />
+            <meshStandardMaterial color="#1a1c23" roughness={0.9} />
           </mesh>
-          <mesh position={[0, 0.9, 0]}>
-            <boxGeometry args={[0.16, 1.6, 0.16]} />
-            <meshStandardMaterial color="#2a2d36" />
+
+          {/* Chrome Bumper Trim */}
+          <mesh position={[0, 0.42, 0]}>
+            <boxGeometry args={[2.02, 0.08, 2.82]} />
+            <meshStandardMaterial color="#e0e6ed" roughness={0.15} metalness={0.95} />
+          </mesh>
+
+          {/* Main Fiberglass Car Body */}
+          <mesh castShadow position={[0, 0.6, 0]}>
+            <boxGeometry args={[1.9, 0.45, 2.7]} />
+            <meshPhysicalMaterial color={s.c} roughness={0.2} metalness={0.1} clearcoat={0.9} clearcoatRoughness={0.1} />
+          </mesh>
+
+          {/* Sloped Front Hood */}
+          <mesh castShadow position={[0, 0.85, 0.55]} rotation={[-0.15, 0, 0]}>
+            <boxGeometry args={[1.75, 0.35, 1.2]} />
+            <meshPhysicalMaterial color={s.c} roughness={0.2} metalness={0.1} clearcoat={0.9} />
+          </mesh>
+
+          {/* Front Grill Panel */}
+          <mesh position={[0, 0.65, 1.36]}>
+            <boxGeometry args={[1.4, 0.25, 0.05]} />
+            <meshStandardMaterial color="#111318" roughness={0.7} />
+          </mesh>
+
+          {/* Glowing Twin Headlights */}
+          {[-0.55, 0.55].map((hx) => (
+            <mesh key={hx} position={[hx, 0.68, 1.38]}>
+              <cylinderGeometry args={[0.12, 0.12, 0.06, 10]} />
+              <meshBasicMaterial color="#ffffff" toneMapped={false} />
+            </mesh>
+          ))}
+
+          {/* Rear Glowing Taillights */}
+          {[-0.55, 0.55].map((tx) => (
+            <mesh key={tx} position={[tx, 0.68, -1.36]}>
+              <boxGeometry args={[0.28, 0.12, 0.05]} />
+              <meshBasicMaterial color="#ff2233" toneMapped={false} />
+            </mesh>
+          ))}
+
+          {/* Cockpit Floorboard */}
+          <mesh position={[0, 0.65, -0.1]}>
+            <boxGeometry args={[1.5, 0.2, 1.4]} />
+            <meshStandardMaterial color="#252830" roughness={0.8} />
+          </mesh>
+
+          {/* Padded Seat Cushion */}
+          <mesh position={[0, 0.8, -0.45]} castShadow>
+            <boxGeometry args={[1.4, 0.2, 0.7]} />
+            <meshStandardMaterial color="#16181d" roughness={0.6} />
+          </mesh>
+
+          {/* Backrest */}
+          <mesh castShadow position={[0, 1.15, -0.85]} rotation={[-0.1, 0, 0]}>
+            <boxGeometry args={[1.4, 0.7, 0.25]} />
+            <meshStandardMaterial color="#16181d" roughness={0.6} />
+          </mesh>
+
+          {/* Steering Column & Wheel (Angled back towards driver) */}
+          <group position={[0, 0.75, 0.35]} rotation={[-0.35, 0, 0]}>
+            {/* Steering Shaft */}
+            <mesh position={[0, 0.25, 0]} frustumCulled={false}>
+              <cylinderGeometry args={[0.035, 0.035, 0.5, 8]} />
+              <meshStandardMaterial color="#8a929a" metalness={0.85} roughness={0.2} />
+            </mesh>
+            {/* Hub & Center Emblem */}
+            <mesh position={[0, 0.5, 0]} frustumCulled={false}>
+              <cylinderGeometry args={[0.07, 0.07, 0.05, 10]} />
+              <meshStandardMaterial color="#111318" />
+            </mesh>
+            <mesh position={[0, 0.52, 0]} frustumCulled={false}>
+              <cylinderGeometry args={[0.035, 0.035, 0.02, 10]} />
+              <meshStandardMaterial color="#39d3ff" toneMapped={false} />
+            </mesh>
+            {/* Steering Wheel Rim */}
+            <mesh position={[0, 0.5, 0]} rotation={[Math.PI / 2, 0, 0]} frustumCulled={false}>
+              <torusGeometry args={[0.26, 0.04, 8, 20]} />
+              <meshStandardMaterial color="#1b1e24" roughness={0.5} />
+            </mesh>
+          </group>
+
+          {/* Trolley Pole Base Spring Coil */}
+          <mesh position={[0, 1.0, -1.0]}>
+            <cylinderGeometry args={[0.12, 0.16, 0.4, 10]} />
+            <meshStandardMaterial color="#333" metalness={0.8} roughness={0.4} />
+          </mesh>
+
+          {/* Power Pole connecting to ceiling */}
+          <mesh position={[0, 5.2, -1.0]}>
+            <cylinderGeometry args={[0.035, 0.035, 8.4, 6]} />
+            <meshStandardMaterial color="#abb2ba" metalness={0.9} roughness={0.15} />
+          </mesh>
+
+          {/* Ceiling Contact Shoe with Spark Glow */}
+          <mesh position={[0, 9.4, -1.0]}>
+            <boxGeometry args={[0.35, 0.08, 0.5]} />
+            <meshStandardMaterial color="#333" metalness={0.9} />
+          </mesh>
+          <mesh position={[0, 9.42, -1.0]}>
+            <boxGeometry args={[0.2, 0.04, 0.3]} />
+            <meshBasicMaterial color="#70d6ff" toneMapped={false} />
           </mesh>
         </group>
       ))}
@@ -1050,7 +1249,7 @@ export function Funfair() {
         <Teacups key={`t${i}`} slot={s} seed={i * 7 + 3} index={i} />
       ))}
       {FURNITURE.bumperCars.map((s, i) => (
-        <BumperCars key={`b${i}`} slot={s} />
+        <BumperCars key={`b${i}`} slot={s} index={i} />
       ))}
       {FURNITURE.bigTop.map((s, i) => (
         <BigTop key={`g${i}`} slot={s} />

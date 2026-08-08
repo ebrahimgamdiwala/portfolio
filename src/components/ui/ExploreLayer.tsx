@@ -285,7 +285,7 @@ function Hud() {
       )}
 
       <AnimatePresence>
-        {free && !touchUi && (
+        {(free || riding?.startsWith("bumperCars")) && !touchUi && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -293,11 +293,13 @@ function Hud() {
             className="absolute inset-x-0 bottom-0 flex justify-center px-6 pb-8"
           >
             <span className="rounded-full border border-white/10 bg-black/50 px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest2 text-white/55 backdrop-blur-md">
-              {pointerLocked
-                ? hovered
-                  ? "Click to enter · esc to release the mouse"
-                  : "W A S D walk · mouse look · shift run · M map · esc release"
-                : "Click anywhere to take the controls"}
+              {riding?.startsWith("bumperCars")
+                ? "W S accelerate & reverse · A D steer · mouse look"
+                : pointerLocked
+                  ? hovered
+                    ? "Click to enter · esc to release the mouse"
+                    : "W A S D walk · mouse look · shift run · M map · esc release"
+                  : "Click anywhere to take the controls"}
             </span>
           </motion.div>
         )}

@@ -217,6 +217,7 @@ export function MobileControls() {
   if (!isTouch || mode !== "explore") return null;
 
   const free = !selected && !riding;
+  const isBumperCars = Boolean(riding?.startsWith("bumperCars"));
 
   return (
     <>
@@ -224,11 +225,11 @@ export function MobileControls() {
 
       {!portrait && (
         <div className="pointer-events-none fixed inset-0 z-40">
+          {(free || isBumperCars) && <Joystick />}
+          {(free || riding) && <LookPad />}
+
           {free && (
             <>
-              <LookPad />
-              <Joystick />
-
               {/* crosshair, and what it is on */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                 <div
@@ -251,14 +252,13 @@ export function MobileControls() {
           )}
 
           {riding && (
-            <>
-              <LookPad />
-              <div className="absolute inset-x-0 bottom-3 flex justify-center px-4">
-                <span className="rounded-full border border-white/10 bg-black/50 px-4 py-2 font-mono text-[9px] uppercase tracking-widest2 text-white/55 backdrop-blur-md">
-                  Drag to look around
-                </span>
-              </div>
-            </>
+            <div className="absolute inset-x-0 bottom-3 flex justify-center px-4">
+              <span className="rounded-full border border-white/10 bg-black/50 px-4 py-2 font-mono text-[9px] uppercase tracking-widest2 text-white/55 backdrop-blur-md">
+                {isBumperCars
+                  ? "Stick to drive & steer · drag to look"
+                  : "Drag to look around"}
+              </span>
+            </div>
           )}
         </div>
       )}

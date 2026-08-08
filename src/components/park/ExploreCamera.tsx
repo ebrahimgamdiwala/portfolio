@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { MathUtils, PerspectiveCamera, Vector3 } from "three";
 import { buildMarkers, type Marker } from "@/lib/explore/markers";
-import { explore, seats, useExplore } from "@/lib/explore/store";
+import { explore, seats, userDrive, useExplore } from "@/lib/explore/store";
 import { resolve } from "@/lib/explore/collide";
 import { drainLook, touch } from "@/lib/explore/touch";
 import { PARK } from "@/lib/park/layout";
@@ -223,6 +223,7 @@ export function ExploreCamera() {
       const isTeacups = riding.startsWith("teacups");
       const isSwingRide = riding.startsWith("swingRide");
       const isPirateShip = riding.startsWith("pirateShip");
+      const isBumperCars = riding.startsWith("bumperCars");
 
       if (isSlide) {
         const fwdX = Math.sin(seat.yaw);
@@ -273,6 +274,33 @@ export function ExploreCamera() {
           cam.position.y - 0.5,
           cam.position.z + fwdZ * 16,
         );
+      } else if (isBumperCars) {
+        let fwdIn = 0;
+        let turnIn = 0;
+        if (keys.current.has("w")) fwdIn += 1;
+        if (keys.current.has("s")) fwdIn -= 1;
+        if (keys.current.has("a")) turnIn += 1;
+        if (keys.current.has("d")) turnIn -= 1;
+        if (fwdIn === 0 && turnIn === 0 && (touch.moveX || touch.moveY)) {
+          fwdIn = touch.moveY;
+          turnIn = -touch.moveX;
+        }
+        userDrive.fwd = fwdIn;
+        userDrive.turn = turnIn;
+
+        const fwdX = Math.sin(seat.yaw);
+        const fwdZ = Math.cos(seat.yaw);
+        want.set(
+          seat.pos.x - fwdX * 0.55,
+          seat.pos.y + 1.45,
+          seat.pos.z - fwdZ * 0.55,
+        );
+        cam.position.copy(want);
+        aim.set(
+          cam.position.x + fwdX * 12,
+          cam.position.y - 0.2,
+          cam.position.z + fwdZ * 12,
+        );
       } else {
         // Drop tower and big wheel. Both publish a seat you are actually
         // sitting in, so sit in it — offsetting outward from the seat is what
@@ -301,6 +329,11 @@ export function ExploreCamera() {
 
       cam.up.set(0, 1, 0);
       cam.lookAt(aim);
+      const wantNear = isBumperCars ? 0.05 : 0.1;
+      if (cam.near !== wantNear) {
+        cam.near = wantNear;
+        cam.updateProjectionMatrix();
+      }
       cam.fov += (64 - cam.fov) * Math.min(1, dt * 3);
       cam.updateProjectionMatrix();
 
@@ -315,6 +348,10 @@ export function ExploreCamera() {
       boarded.current = null;
       yaw.current = stowed.current.yaw;
       pitch.current = stowed.current.pitch;
+      if (cam.near !== 0.1) {
+        cam.near = 0.1;
+        cam.updateProjectionMatrix();
+      }
     }
 
     /* ── parked at a marker, or walking ──────────────────────────────────── */
