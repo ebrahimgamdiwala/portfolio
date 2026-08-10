@@ -91,6 +91,11 @@ the actual moving car, and boarding the tower restarts its cycle from the bottom
 so you never queue. Throwing the switch at the machine hall winds its gears up;
 the main stage brings its lighting rig to life. The gate is the guest book.
 
+The **bumper cars** are fully drivable: board one and steer it yourself with
+WASD (or the on-screen joystick on mobile) while the camera tracks the car.
+Driving has real dodgem physics — acceleration, drift and bounce off the
+rink wall and the other cars — rather than a scripted path.
+
 Marker copy, framing and which rides can be boarded live in
 `src/lib/explore/markers.ts`; the mode itself is a small external store in
 `src/lib/explore/store.ts` — external rather than React context because the
