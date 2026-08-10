@@ -22,15 +22,6 @@ npm install
 npm run dev      # http://localhost:3000
 ```
 
-## Branches
-
-| branch | vibe |
-| --- | --- |
-| `amusement-park` | photoreal night park, coaster ride (this one) |
-| `biome` | floating voxel island, biome-per-chapter |
-
-Each branch is a self-contained take on the same content — same underlying data, different world.
-
 ## Content lives in one file
 
 Everything you'd normally want to change — copy, contact info, the ride itself — lives in
