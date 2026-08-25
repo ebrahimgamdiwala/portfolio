@@ -48,7 +48,7 @@ yarn-error.log*
 *.swo
 
 # claude code local state
-.claude/settings.local.json
+.claude/
 
 # os
 .DS_Store
