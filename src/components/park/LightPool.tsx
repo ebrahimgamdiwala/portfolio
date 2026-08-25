@@ -16,15 +16,17 @@ import { useQuality } from "./Quality";
  * about is invisible in practice — you cannot tell that the wheel two hundred
  * metres behind you stopped casting light, but you would certainly notice the
  * frame rate if it hadn't.
+ *
+ * The size of the pool is fixed for the session (`lightPool` in Quality.tsx)
+ * rather than following the live tier: the count is part of three's shader
+ * program cache key, so changing it recompiles every material in the park.
  */
-const POOL = { high: 8, medium: 6, low: 4 } as const;
-
 export function LightPool({ sources }: { sources: LightSource[] }) {
   const { camera } = useThree();
   const q = useQuality();
   const { sky } = useParkCtx();
   const lights = useRef<(PointLight | null)[]>([]);
-  const count = POOL[q.tier];
+  const count = q.lightPool;
 
   // scratch, reused: an allocation per frame here would be per-light garbage
   const order = useMemo(

@@ -3,7 +3,7 @@
 import { useMemo, useRef, type MutableRefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
-import { Color, Group, Quaternion, Vector3 } from "three";
+import { Color, Group, PointLight, Quaternion, Vector3 } from "three";
 import { HALF_GAUGE, RAIL_R, RAIL_RISE, type CoasterData } from "@/lib/park/coaster";
 import type { RideState } from "@/lib/park/ride";
 import { useQuality } from "./Quality";
@@ -26,6 +26,9 @@ const DECK = RAIL_RISE + 0.52;
 const pos = new Vector3();
 const quat = new Quaternion();
 const up = new Vector3();
+/** Headlamp seat, in the lead car's own frame. */
+const LAMP = new Vector3(0, 0.1, -3);
+const lampAt = new Vector3();
 
 function Wheels() {
   const y = -DECK + RAIL_RISE + RAIL_R * 0.4;
@@ -85,14 +88,13 @@ function Car({ accent, front }: { accent: Color; front: boolean }) {
               clearcoatRoughness={0.1}
             />
           </RoundedBox>
-          {/* headlamps */}
+          {/* headlamps. The lamp *light* itself is not here — see Train. */}
           {[-0.42, 0.42].map((x) => (
             <mesh key={x} position={[x, 0.02, -2.66]}>
               <sphereGeometry args={[0.15, 12, 10]} />
               <meshBasicMaterial color="#fff3d8" toneMapped={false} />
             </mesh>
           ))}
-          <pointLight position={[0, 0.1, -3]} color="#ffe6bb" intensity={22} distance={34} decay={2} />
         </>
       )}
 
@@ -134,6 +136,7 @@ export function Train({
   const q = useQuality();
   const group = useRef<Group>(null);
   const cars = useRef<(Group | null)[]>([]);
+  const headlamp = useRef<PointLight>(null);
   const accent = useMemo(() => new Color("#e8402f"), []);
   const gap = CAR_LEN / coaster.length;
 
@@ -150,17 +153,47 @@ export function Train({
       g.quaternion.copy(quat);
     }
     // the train is only worth drawing once the ride has actually started
-    if (group.current) group.current.visible = ride.current.blend > 0.04;
+    const running = ride.current.blend > 0.04;
+    if (group.current) group.current.visible = running;
+
+    // The headlamp rides along but lives outside that group, so carry it to
+    // the lead car by hand and switch it off with the same test.
+    const lamp = headlamp.current;
+    const lead = cars.current[0];
+    if (lamp && lead) {
+      lamp.position.copy(LAMP).applyQuaternion(lead.quaternion).add(lead.position);
+      lamp.intensity = running ? 22 : 0;
+    }
   });
 
   return (
-    <group ref={group}>
-      {Array.from({ length: CARS }, (_, k) => (
-        <group key={k} ref={(el) => void (cars.current[k] = el)}>
-          <Car accent={accent} front={k === 0} />
-        </group>
-      ))}
-      {q.shadows && null}
-    </group>
+    <>
+      <group ref={group}>
+        {Array.from({ length: CARS }, (_, k) => (
+          <group key={k} ref={(el) => void (cars.current[k] = el)}>
+            <Car accent={accent} front={k === 0} />
+          </group>
+        ))}
+        {q.shadows && null}
+      </group>
+
+      {/*
+        Deliberately outside the group above.
+
+        Three counts the lights it can *see* — a light under a hidden parent is
+        not counted — and folds that count into its shader program cache key. So
+        parking the headlamp inside the train meant the count changed the moment
+        the ride started, and every material in the park wanted a new program at
+        exactly that instant. Out here the count never moves; the lamp goes dark
+        by intensity instead, which looks the same and costs nothing.
+      */}
+      <pointLight
+        ref={headlamp}
+        color="#ffe6bb"
+        intensity={0}
+        distance={34}
+        decay={2}
+      />
+    </>
   );
 }

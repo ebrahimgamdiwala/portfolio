@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { FogExp2, type AmbientLight, type DirectionalLight, type HemisphereLight } from "three";
+import {
+  FogExp2,
+  WebGLRenderTarget,
+  type AmbientLight,
+  type DirectionalLight,
+  type HemisphereLight,
+  type Mesh,
+  type Object3D,
+  type Texture,
+} from "three";
+import { PARK } from "@/lib/park/layout";
 import { park } from "@/lib/content";
 import { useExplore } from "@/lib/explore/store";
 import { useScroll } from "@/lib/scroll/ScrollProvider";
@@ -63,6 +73,8 @@ export function Scene({ world }: { world: ParkWorld }) {
   const lights = useMemo(() => buildLights(hoardings), [hoardings]);
   const ctx = useMemo(() => ({ ride, sky, world }), [world]);
   const lastEnv = useRef({ p: -1, at: 0 });
+  /** Frames drawn since the warm-up finished; null once the loader is released. */
+  const settle = useRef<number | null>(null);
 
   useEffect(() => {
     scene.fog = fog;
@@ -78,20 +90,128 @@ export function Scene({ world }: { world: ParkWorld }) {
   // since explore mode mounts markers that were not there before.
   useEffect(() => {
     if (stage < 8) return;
-    const id = window.setTimeout(() => {
+    let cancelled = false;
+
+    const id = window.setTimeout(async () => {
       const s = shareMaterials(scene);
       if (process.env.NODE_ENV === "development") {
         console.log(`[PROFILE] shareMaterials ${s.before} -> ${s.after} over ${s.meshes} meshes`);
       }
-      // Force every program to compile now, while the loader is still up,
-      // instead of on the first real draw call each one gets — which for
-      // anything outside the boot camera's view would otherwise land on the
-      // first scroll. Same reasoning on mode changes: explore mode mounts
-      // markers nothing has drawn yet.
-      gl.compile(scene, camera);
-      boot.compiled();
+
+      // 1. Upload every texture. Compiling a program does not touch the maps it
+      //    samples: a canvas texture is uploaded and mipmapped the first time
+      //    something actually draws with it, which without this is somewhere out
+      //    on the track.
+      const seen = new Set<Texture>();
+      scene.traverse((o) => {
+        const m = (o as Mesh).material;
+        for (const mat of Array.isArray(m) ? m : m ? [m] : []) {
+          for (const v of Object.values(mat)) {
+            const tex = v as Texture | null;
+            if (tex?.isTexture && !seen.has(tex)) {
+              seen.add(tex);
+              gl.initTexture(tex);
+            }
+          }
+        }
+      });
+
+      // 2. Compile every program — and *wait* for it. `compile()` only starts
+      //    the work: with KHR_parallel_shader_compile the driver links on its
+      //    own threads and returns immediately, so the loader would lift while
+      //    programs were still linking and the first draw needing one would
+      //    block. `compileAsync` resolves only once they all report ready.
+      //
+      //    Two details decide whether the programs built here are the ones the
+      //    ride actually uses:
+      //
+      //    · Colour space. Three keys a program on the colour space it is
+      //      writing into, and that comes from the bound render target, not the
+      //      canvas. `Effects` is always mounted, so the park is always drawn
+      //      into the composer's target in linear space — compiling against the
+      //      canvas would build a set of sRGB programs nothing ever draws with,
+      //      and every material would still compile for real on first sight.
+      //      Binding any target puts the compiler in the same space the
+      //      composer renders in.
+      //
+      //    · Shadows. The sun stops casting once it drops under the horizon
+      //      (see the frame loop below), about a quarter of the way in, and the
+      //      count of shadow-casting lights is in that key too — so that single
+      //      flip asks every material in the park for a fresh program, mid-ride.
+      //      Building both states now turns it into a cache hit.
+      //
+      //    `compileAsync` reads the scene synchronously before it starts
+      //    awaiting, so each pass is set up immediately before its call: frames
+      //    keep running in between and put these back as they were.
+      const light = sun.current;
+      const warmTarget = new WebGLRenderTarget(1, 1);
+      gl.setRenderTarget(warmTarget);
+
+      for (const casting of [true, false]) {
+        if (light) light.castShadow = casting;
+        await gl.compileAsync(scene, camera);
+        if (cancelled) {
+          gl.setRenderTarget(null);
+          warmTarget.dispose();
+          return;
+        }
+      }
+
+      // 3. Build the shadow *depth* programs too. Those are a separate set the
+      //    shadow pass compiles lazily, and the shadow box travels with the
+      //    rider — so fresh casters entering it compile mid-ride. One pass with
+      //    the box opened out over the whole park builds them all now, under
+      //    the loader, which is opaque.
+      //
+      //    The shadow pass only draws what it can see, so anything hidden right
+      //    now is shown for this one frame — chiefly the train, which is parked
+      //    and invisible until the ride starts and would otherwise compile a
+      //    depth program per car material on the first scroll.
+      const hidden: Object3D[] = [];
+      scene.traverse((o) => {
+        if (!o.visible) hidden.push(o);
+      });
+      for (const o of hidden) o.visible = true;
+
+      if (light) {
+        light.castShadow = true;
+
+        const cam = light.shadow.camera;
+        const keep = {
+          left: cam.left, right: cam.right, top: cam.top, bottom: cam.bottom,
+          near: cam.near, far: cam.far,
+        };
+        const r = PARK.fenceRadius + 40;
+        cam.left = -r; cam.right = r; cam.top = r; cam.bottom = -r;
+        cam.near = 1; cam.far = 1600;
+        cam.updateProjectionMatrix();
+        gl.shadowMap.needsUpdate = true;
+        gl.render(scene, camera);
+
+        cam.left = keep.left; cam.right = keep.right;
+        cam.top = keep.top; cam.bottom = keep.bottom;
+        cam.near = keep.near; cam.far = keep.far;
+        cam.updateProjectionMatrix();
+        gl.shadowMap.needsUpdate = true;
+      }
+
+      // hand the renderer back to the frame loop, which owns it from here
+      for (const o of hidden) o.visible = false;
+      gl.setRenderTarget(null);
+      warmTarget.dispose();
+
+      // 4. Let the real thing draw a few frames before lifting the loader.
+      //    Everything above compiles against a stand-in target; the composer
+      //    has its own, and the handful of programs that only its exact setup
+      //    asks for are cheaper to pay for here, under the loader, than one
+      //    second later with the park already on screen.
+      settle.current = 0;
     }, 0);
-    return () => window.clearTimeout(id);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(id);
+    };
   }, [scene, mode, stage, gl, camera]);
 
   useFrame((state) => {
@@ -131,6 +251,12 @@ export function Scene({ world }: { world: ParkWorld }) {
       // space this size, and without a warm bed under everything the whole
       // fairground reads as unlit geometry once the sun has gone.
       spill.current.intensity = 0.16 + s.neon * 0.62;
+    }
+
+    // A few real composer frames under the loader, then release it.
+    if (settle.current !== null && ++settle.current > 3) {
+      settle.current = null;
+      boot.compiled();
     }
 
     // Prefiltering is milliseconds, not microseconds. Rebuild only when the sky
