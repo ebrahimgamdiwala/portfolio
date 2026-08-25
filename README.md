@@ -17,10 +17,36 @@ seed.
 
 **Next.js 15 · React 19 · TypeScript · three.js / @react-three/fiber · drei · postprocessing · Tailwind CSS · Lenis**
 
+<p align="center">
+  <img src=".github/screenshots/hero.jpg" width="100%" alt="Landing page: the park at dusk, coaster train idling in the station" />
+</p>
+
 ```bash
 npm install
 npm run dev      # http://localhost:3000
 ```
+
+## The ride
+
+Six stations, one closed circuit. Each one owns a slice of the scroll and a zone of the park —
+scroll past the gate and the coaster banks through education, the headline rides, the works,
+the midway, and the prize row before the brake run carries you back to the station.
+
+<table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/education.jpg" width="100%" alt="Foundation Gardens: the education station, coaster diving past a scoreboard reading 9.70" /><br /><sub><b>01 · Foundation Gardens</b> — the first drop, a still-water scoreboard that hasn't moved in six semesters</sub></td>
+    <td width="50%"><img src=".github/screenshots/rides.jpg" width="100%" alt="Attraction Row: the projects station, train banking past the ChainForecast billboard" /><br /><sub><b>02 · Attraction Row</b> — the headline projects, each one a structure with its own billboard</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/works.jpg" width="100%" alt="The Works: the experience station, train diving under a giant magnifying glass structure" /><br /><sub><b>03 · The Works</b> — where the code runs for real, production not prototypes</sub></td>
+    <td width="50%"><img src=".github/screenshots/midway.jpg" width="100%" alt="The Midway: the skills station, low fast track past a Cloud & DevOps stall sign" /><br /><sub><b>04 · The Midway</b> — every stall overhead is something that has shipped</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src=".github/screenshots/prizes.jpg" width="80%" alt="Pyro Field: the awards station under a starry sky, gate lit up ahead" /><br />
+  <sub><b>05 · Pyro Field</b> — hackathon wins, trophies lit from below, the sky about to go off</sub>
+</p>
 
 ## Content lives in one file
 
@@ -87,6 +113,17 @@ Markers stand over every attraction, generated from the same `park.json` (`src/l
 Aim the crosshair at one and click: the camera flies to it and a card opens with that item's
 real detail. The minimap in the corner is drawn from the layout tables and the solved circuit,
 and clicking a ride on it selects that marker too.
+
+<table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/explore-entry.jpg" width="100%" alt="Explore mode: standing at the gate looking down the midway on foot" /><br /><sub>on foot at the gate, midway stretching ahead, minimap bottom right</sub></td>
+    <td width="50%"><img src=".github/screenshots/explore-card.jpg" width="100%" alt="Explore mode: a marker card open for the water slides, with a Ride the Slide button" /><br /><sub>walk up to a marker, the real detail opens</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/explore-boarded.jpg" width="100%" alt="Explore mode: strapped into the water slide, looking down the flume mid-ride" /><br /><sub>strapped in and riding, camera in the seat</sub></td>
+    <td width="50%"><img src=".github/screenshots/explore-map.jpg" width="100%" alt="Explore mode: the minimap open over the midway, solved circuit and markers drawn on it" /><br /><sub>press M for the map, solved from the same layout tables</sub></td>
+  </tr>
+</table>
 
 Several rides are **boardable**:
 
