@@ -23,9 +23,18 @@ export interface BootState {
   stage: number;
   total: number;
   done: boolean;
+  /**
+   * True once every mounted material has had its shader program compiled on
+   * the GPU. `done` only means the tree is mounted — WebGL still compiles
+   * each program lazily on its first real draw call, so without this the
+   * park would mount silently behind the loader and then hitch on the first
+   * scroll, the moment attractions outside the boot camera's view actually
+   * get drawn for the first time.
+   */
+  compiled: boolean;
 }
 
-let state: BootState = { stage: 0, total: 1, done: false };
+let state: BootState = { stage: 0, total: 1, done: false, compiled: false };
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<BootState>) {
@@ -52,8 +61,11 @@ export const boot = {
       set({ stage, total, done: stage >= total });
     }
   },
+  compiled() {
+    if (!state.compiled) set({ compiled: true });
+  },
   reset() {
-    set({ stage: 0, total: 1, done: false });
+    set({ stage: 0, total: 1, done: false, compiled: false });
   },
 };
 

@@ -32,7 +32,10 @@ function Stage() {
       {riding && <Hero />}
       {riding && <StationLayer />}
       <ExploreLayer />
-      <Loader ready={!!world && bootState.done} progress={bootState.stage / bootState.total} />
+      <Loader
+        ready={!!world && bootState.done && bootState.compiled}
+        progress={bootState.stage / bootState.total}
+      />
       <div style={{ height: `${SCROLL_VH}vh` }} aria-hidden />
     </>
   );

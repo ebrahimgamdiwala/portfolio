@@ -13,7 +13,7 @@ import { makeRideState } from "@/lib/park/ride";
 import { makeSkyState, sampleSky } from "@/lib/park/sky";
 import { applyAnisotropy } from "@/lib/park/textures";
 import { shareMaterials } from "@/lib/park/materials";
-import { useStagedMount } from "@/lib/park/boot";
+import { boot, useStagedMount } from "@/lib/park/boot";
 import { ParkProvider } from "./ParkContext";
 import { RideCamera } from "./RideCamera";
 import { ExploreCamera } from "./ExploreCamera";
@@ -45,7 +45,7 @@ import { useQuality } from "./Quality";
 export function Scene({ world }: { world: ParkWorld }) {
   const { coaster, hoardings, props, progressToTau } = world;
   const { eased } = useScroll();
-  const { gl, scene } = useThree();
+  const { gl, scene, camera } = useThree();
   const q = useQuality();
   const { mode } = useExplore();
 
@@ -83,9 +83,16 @@ export function Scene({ world }: { world: ParkWorld }) {
       if (process.env.NODE_ENV === "development") {
         console.log(`[PROFILE] shareMaterials ${s.before} -> ${s.after} over ${s.meshes} meshes`);
       }
+      // Force every program to compile now, while the loader is still up,
+      // instead of on the first real draw call each one gets — which for
+      // anything outside the boot camera's view would otherwise land on the
+      // first scroll. Same reasoning on mode changes: explore mode mounts
+      // markers nothing has drawn yet.
+      gl.compile(scene, camera);
+      boot.compiled();
     }, 0);
     return () => window.clearTimeout(id);
-  }, [scene, mode, stage]);
+  }, [scene, mode, stage, gl, camera]);
 
   useFrame((state) => {
     const p = eased.current;
