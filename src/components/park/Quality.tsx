@@ -1,7 +1,9 @@
 "use client";
 
 import { PerformanceMonitor } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import type { WebGLRenderer } from "three";
 import { useBoot } from "@/lib/park/boot";
 
 export type Tier = "high" | "medium" | "low";
@@ -85,27 +87,36 @@ function forcedTier(): Tier | null {
  * Whether the GPU is an integrated part.
  *
  * Core count is a poor proxy for graphics: a sixteen-thread laptop with Intel
- * UHD reports as a workstation and takes `high`, then cannot hold it. Asking
- * the driver what it actually is costs one throwaway context and settles it.
- * Getting this right up front matters more than it looks — every later
- * correction is a tier change, and a tier change rebuilds the post chain and
- * the shadow targets in the middle of the ride.
+ * UHD reports as a workstation and takes `high`, then cannot hold it. Getting
+ * this right up front matters more than it looks — every later correction is a
+ * tier change, and a tier change rebuilds the post chain and the shadow
+ * targets in the middle of the ride.
+ *
+ * This asks the park's *own* context what it is running on, rather than
+ * spinning up a throwaway one to ask. On a laptop with switchable graphics
+ * those are not necessarily the same GPU: the canvas is created with
+ * `powerPreference: "high-performance"` and may be handed the discrete part,
+ * while a bare probe context gets the power-saving one. Probing separately
+ * would report the integrated chip and quietly drop a machine that was about
+ * to render the whole park on its discrete GPU down a tier.
  */
-function integratedGpu(): boolean {
+function rendererName(gl: WebGLRenderer): string {
   try {
-    const gl = document.createElement("canvas").getContext("webgl2");
-    const info = gl?.getExtension("WEBGL_debug_renderer_info");
-    if (!gl || !info) return false;
-    const name = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
-    return /intel|uhd|iris|hd graphics|apple m|mali|adreno|powervr|vivante|llvmpipe|swiftshader/i.test(
-      name,
-    );
+    const ctx = gl.getContext();
+    const info = ctx.getExtension("WEBGL_debug_renderer_info");
+    return info ? String(ctx.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "";
   } catch {
-    return false;
+    return "";
   }
 }
 
-function initialTier(): Tier {
+function integratedGpu(gl: WebGLRenderer): boolean {
+  return /intel|uhd|iris|hd graphics|apple m|mali|adreno|powervr|vivante|llvmpipe|swiftshader/i.test(
+    rendererName(gl),
+  );
+}
+
+function initialTier(gl: WebGLRenderer): Tier {
   if (typeof window === "undefined") return "high";
   const forced = forcedTier();
   if (forced) return forced;
@@ -115,7 +126,7 @@ function initialTier(): Tier {
   if (narrow || cores <= 4) return "low";
   // Integrated graphics are the common case on laptops and they cannot carry
   // the planar reflection pass, so `high` has to be earned.
-  if (cores < 12 || integratedGpu()) return "medium";
+  if (cores < 12 || integratedGpu(gl)) return "medium";
   return "high";
 }
 
@@ -129,7 +140,8 @@ function prefersCalm() {
  * between tiers is far more distracting than sitting one notch low.
  */
 export function Quality({ children }: { children: ReactNode }) {
-  const [startTier] = useState(initialTier);
+  const gl = useThree((s) => s.gl);
+  const [startTier] = useState(() => initialTier(gl));
   const [tier, setTier] = useState<Tier>(startTier);
   const [calm] = useState(prefersCalm);
   const [pinned] = useState(() => forcedTier() !== null);
@@ -153,9 +165,13 @@ export function Quality({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id);
   }, [compiled]);
 
-  // which tier the park settled on, for diagnosing "where did my fireworks go"
+  // which tier the park settled on and what it is drawing with, for diagnosing
+  // "where did my fireworks go" — and, on a switchable-graphics laptop, which
+  // of the two GPUs the browser actually handed us
   if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-    (window as unknown as { __tier?: Tier }).__tier = tier;
+    const w = window as unknown as { __tier?: Tier; __gpu?: string };
+    w.__tier = tier;
+    w.__gpu = rendererName(gl);
   }
 
   return (
