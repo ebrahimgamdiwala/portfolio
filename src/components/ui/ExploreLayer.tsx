@@ -114,126 +114,139 @@ function Card() {
   return (
     <motion.aside
       key={marker.id}
-      initial={{ opacity: 0, x: -20, scale: 0.98 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: -16, scale: 0.98 }}
-      transition={{ duration: 0.28, ease }}
-      style={{ willChange: "transform, opacity" }}
+      initial={{ opacity: 0, x: -24 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.35, ease }}
       className="pointer-events-auto fixed bottom-0 left-0 top-0 z-40 flex w-full max-w-[26rem] flex-col justify-center px-4 py-6 sm:px-10 sm:py-0"
     >
-      <div
-        data-lenis-prevent
-        className="max-h-[88dvh] overflow-y-auto rounded-2xl border border-white/15 bg-black/82 p-4 shadow-2xl backdrop-blur-md [-webkit-backdrop-filter:blur(16px)] [transform:translateZ(0)] sm:p-6"
-      >
-        <div className="flex items-center gap-3">
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ background: marker.accent }}
-          />
-          <span
-            className="font-mono text-[10px] uppercase tracking-widest2"
-            style={{ color: marker.accent }}
-          >
-            {marker.title}
-          </span>
-        </div>
+      <div className="relative overflow-hidden rounded-2xl shadow-[0_12px_44px_rgba(0,0,0,0.65)]">
+        {/* Dedicated Glassmorphism Frosted Glass Layer */}
+        <div
+          className="absolute inset-0 -z-10 rounded-2xl border border-white/20 bg-black/60 shadow-inner backdrop-blur-2xl"
+          style={{
+            WebkitBackdropFilter: "blur(24px)",
+            backdropFilter: "blur(24px)",
+          }}
+        />
+        {/* Top Specular Glass Sheen */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 rounded-t-2xl bg-gradient-to-b from-white/[0.12] to-transparent" />
 
-        <h2 className="mt-2 text-[clamp(1.1rem,3vw,1.9rem)] font-semibold leading-tight tracking-[-0.03em] text-white sm:mt-3">
-          {isContact ? "Let's build something" : (item?.title ?? marker.station.title)}
-        </h2>
-
-        {(item?.org || item?.subtitle) && (
-          <p className="mt-1 text-[13px] text-white/50">
-            {[item.org, item.subtitle, item.period].filter(Boolean).join(" · ")}
-          </p>
-        )}
-
-        <p className="mt-2 text-[13px] leading-relaxed text-white/55 sm:mt-3">{marker.hint}</p>
-
-        {isContact ? (
-          <div className="mt-4 space-y-3 sm:mt-5 sm:space-y-4">
-            <a
-              href={`mailto:${meta.email}`}
-              className="group block text-[15px] font-medium text-white"
+        {/* Scrollable Content Container */}
+        <div
+          data-lenis-prevent
+          className="relative max-h-[88dvh] overflow-y-auto p-4 sm:p-6"
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className="h-2.5 w-2.5 rounded-full shadow-[0_0_10px_currentColor]"
+              style={{ background: marker.accent, color: marker.accent }}
+            />
+            <span
+              className="font-mono text-[10px] uppercase tracking-widest2"
+              style={{ color: marker.accent }}
             >
-              {meta.email}
-              <span className="block h-px w-0 bg-white transition-[width] duration-500 group-hover:w-full" />
-            </a>
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {meta.socials.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="font-mono text-[10px] uppercase tracking-widest2 text-white/50 transition-colors hover:text-white"
-                >
-                  {s.label} ↗
-                </a>
-              ))}
-            </div>
-            <p className="font-mono text-[10px] uppercase tracking-widest2 text-emerald-300/70">
-              {meta.availability}
-            </p>
+              {marker.title}
+            </span>
           </div>
-        ) : (
-          <>
-            {item?.points?.length ? (
-              <ul
-                data-lenis-prevent
-                className="mt-3 max-h-[22vh] space-y-1.5 overflow-y-auto pr-1 sm:mt-4 sm:max-h-[34vh] sm:space-y-2"
-              >
-                {item.points.map((p) => (
-                  <li
-                    key={p}
-                    className="flex gap-3 text-[13px] leading-relaxed text-white/62"
-                  >
-                    <span className="mt-[9px] h-px w-3 shrink-0 bg-white/30" />
-                    <span>{p}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
 
-            {item?.tags?.length ? (
-              <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4">
-                {item.tags.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-white/65"
+          <h2 className="mt-2 text-[clamp(1.1rem,3vw,1.9rem)] font-semibold leading-tight tracking-[-0.03em] text-white sm:mt-3">
+            {isContact ? "Let's build something" : (item?.title ?? marker.station.title)}
+          </h2>
+
+          {(item?.org || item?.subtitle) && (
+            <p className="mt-1 text-[13px] text-white/55">
+              {[item.org, item.subtitle, item.period].filter(Boolean).join(" · ")}
+            </p>
+          )}
+
+          <p className="mt-2 text-[13px] leading-relaxed text-white/65 sm:mt-3">{marker.hint}</p>
+
+          {isContact ? (
+            <div className="mt-4 space-y-3 sm:mt-5 sm:space-y-4">
+              <a
+                href={`mailto:${meta.email}`}
+                className="group block text-[15px] font-medium text-white"
+              >
+                {meta.email}
+                <span className="block h-px w-0 bg-white transition-[width] duration-500 group-hover:w-full" />
+              </a>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {meta.socials.map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="font-mono text-[10px] uppercase tracking-widest2 text-white/50 transition-colors hover:text-white"
                   >
-                    {t}
-                  </span>
+                    {s.label} ↗
+                  </a>
                 ))}
               </div>
-            ) : null}
-
-            {item?.note || item?.result ? (
-              <p className="mt-3 text-[12.5px] text-white/50 sm:mt-4">
-                {[item.result, item.note].filter(Boolean).join(" · ")}
+              <p className="font-mono text-[10px] uppercase tracking-widest2 text-emerald-300/70">
+                {meta.availability}
               </p>
-            ) : null}
-          </>
-        )}
+            </div>
+          ) : (
+            <>
+              {item?.points?.length ? (
+                <ul
+                  data-lenis-prevent
+                  className="mt-3 max-h-[22vh] space-y-1.5 overflow-y-auto pr-1 sm:mt-4 sm:max-h-[34vh] sm:space-y-2"
+                >
+                  {item.points.map((p) => (
+                    <li
+                      key={p}
+                      className="flex gap-3 text-[13px] leading-relaxed text-white/70"
+                    >
+                      <span className="mt-[9px] h-px w-3 shrink-0 bg-white/30" />
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
 
-        <div className="mt-4 flex items-center gap-3 sm:mt-6">
-          {marker.boardable && (
+              {item?.tags?.length ? (
+                <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4">
+                  {item.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-white/75"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              {item?.note || item?.result ? (
+                <p className="mt-3 text-[12.5px] text-white/55 sm:mt-4">
+                  {[item.result, item.note].filter(Boolean).join(" · ")}
+                </p>
+              ) : null}
+            </>
+          )}
+
+          <div className="mt-4 flex items-center gap-3 sm:mt-6">
+            {marker.boardable && (
+              <button
+                type="button"
+                onClick={() => explore.ride(riding ? null : (marker.rideId ?? marker.kind))}
+                className="rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-widest2 text-black transition-opacity hover:opacity-85"
+                style={{ background: marker.accent }}
+              >
+                {riding ? "Get off" : marker.action}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => explore.ride(riding ? null : (marker.rideId ?? marker.kind))}
-              className="rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-widest2 text-black transition-opacity hover:opacity-85"
-              style={{ background: marker.accent }}
+              onClick={() => explore.select(null)}
+              className="font-mono text-[10px] uppercase tracking-widest2 text-white/45 transition-colors hover:text-white"
             >
-              {riding ? "Get off" : marker.action}
+              Back to the park
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => explore.select(null)}
-            className="font-mono text-[10px] uppercase tracking-widest2 text-white/45 transition-colors hover:text-white"
-          >
-            Back to the park
-          </button>
+          </div>
         </div>
       </div>
     </motion.aside>
