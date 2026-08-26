@@ -84,7 +84,7 @@ export function ExploreMap() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="pointer-events-none flex max-w-[12rem] sm:max-w-xs items-center gap-2 rounded-full border border-white/20 bg-black/85 px-3 py-1 text-white shadow-xl backdrop-blur-xl"
+            className="pointer-events-none flex max-w-[14rem] sm:max-w-md items-center gap-2 rounded-full border border-white/20 bg-black/85 px-3.5 py-1.5 text-white shadow-xl backdrop-blur-xl"
           >
             <span
               className="h-2 w-2 shrink-0 rounded-full animate-pulse shadow-[0_0_8px_currentColor]"
@@ -101,7 +101,7 @@ export function ExploreMap() {
         <div className="pointer-events-auto overflow-hidden rounded-2xl border border-white/15 bg-black/75 shadow-2xl backdrop-blur-md [-webkit-backdrop-filter:blur(16px)] [transform:translateZ(0)]">
           <svg
             viewBox={`${-SPAN} ${-SPAN} ${SPAN * 2} ${SPAN * 2}`}
-            className="h-[6.5rem] w-[6.5rem] landscape:h-[8rem] landscape:w-[8rem] sm:h-[15rem] sm:w-[15rem] md:h-[18.5rem] md:w-[18.5rem] lg:h-[21.5rem] lg:w-[21.5rem] xl:h-[23.5rem] xl:w-[23.5rem]"
+            className="h-[6.5rem] w-[6.5rem] landscape:h-[8.5rem] landscape:w-[8.5rem] sm:h-[18rem] sm:w-[18rem] md:h-[24rem] md:w-[24rem] lg:h-[28rem] lg:w-[28rem] xl:h-[32rem] xl:w-[32rem] 2xl:h-[35rem] 2xl:w-[35rem]"
             role="img"
             aria-label="Map of the park"
           >
