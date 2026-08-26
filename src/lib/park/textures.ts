@@ -188,7 +188,9 @@ export function verticalFade(): Texture {
   const ctx = c.getContext("2d")!;
   const g = ctx.createLinearGradient(0, 256, 0, 0);
   g.addColorStop(0, "#ffffff");
-  g.addColorStop(0.45, "#a8a8a8");
+  g.addColorStop(0.3, "#777777");
+  g.addColorStop(0.6, "#1a1a1a");
+  g.addColorStop(0.85, "#000000");
   g.addColorStop(1, "#000000");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 4, 256);

@@ -112,7 +112,7 @@ function GroundFog() {
       if (!mesh) return;
       mesh.position.set(
         camera.position.x + Math.sin(t * 0.05 + i) * 14,
-        1.4 + i * 2.4,
+        0.3 + i * 0.35,
         camera.position.z + Math.cos(t * 0.043 + i) * 14,
       );
       mesh.rotation.z = t * 0.012 * (i % 2 ? 1 : -1);
