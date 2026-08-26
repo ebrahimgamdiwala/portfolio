@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Vector3 } from "three";
 import { walker } from "@/components/park/ExploreCamera";
-import { buildMarkers } from "@/lib/explore/markers";
+import { buildMarkers, type Marker } from "@/lib/explore/markers";
 import { explore, useExplore } from "@/lib/explore/store";
 import { PARK, ZONES } from "@/lib/park/layout";
 import { usePark } from "@/lib/usePark";
@@ -24,9 +25,11 @@ export function ExploreMap() {
   const { mode, selected } = useExplore();
   const world = usePark();
   const [open, setOpen] = useState(true);
+  const [hovered, setHovered] = useState<Marker | null>(null);
   const arrow = useRef<SVGGElement>(null);
 
   const markers = useMemo(() => buildMarkers(), []);
+  const active = hovered ?? (selected ? markers.find((m) => m.id === selected) ?? null : null);
 
   const track = useMemo(() => {
     if (!world) return "";
@@ -71,12 +74,34 @@ export function ExploreMap() {
   if (mode !== "explore") return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+    <div className="pointer-events-none fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-1.5 sm:gap-2">
+      {/* Ride Name Hover/Active Pill */}
+      <AnimatePresence>
+        {open && active && (
+          <motion.div
+            key={active.id}
+            initial={{ opacity: 0, y: 6, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="pointer-events-none flex max-w-[12rem] sm:max-w-xs items-center gap-2 rounded-full border border-white/20 bg-black/85 px-3 py-1 text-white shadow-xl backdrop-blur-xl"
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-full animate-pulse shadow-[0_0_8px_currentColor]"
+              style={{ backgroundColor: active.accent, color: active.accent }}
+            />
+            <span className="truncate font-mono text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider text-white/95">
+              {active.title}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {open && (
-        <div className="pointer-events-auto overflow-hidden rounded-2xl border border-white/12 bg-black/65 backdrop-blur-xl">
+        <div className="pointer-events-auto overflow-hidden rounded-2xl border border-white/15 bg-black/75 shadow-2xl backdrop-blur-md [-webkit-backdrop-filter:blur(16px)] [transform:translateZ(0)]">
           <svg
             viewBox={`${-SPAN} ${-SPAN} ${SPAN * 2} ${SPAN * 2}`}
-            className="h-[9rem] w-[9rem] landscape:h-[10rem] landscape:w-[10rem] sm:h-[15rem] sm:w-[15rem] md:h-[17rem] md:w-[17rem]"
+            className="h-[6.5rem] w-[6.5rem] landscape:h-[8rem] landscape:w-[8rem] sm:h-[15rem] sm:w-[15rem] md:h-[18.5rem] md:w-[18.5rem] lg:h-[21.5rem] lg:w-[21.5rem] xl:h-[23.5rem] xl:w-[23.5rem]"
             role="img"
             aria-label="Map of the park"
           >
@@ -122,28 +147,31 @@ export function ExploreMap() {
             {/* every attraction you can visit */}
             {markers.map((m) => {
               const on = selected === m.id;
+              const isHov = hovered?.id === m.id;
               return (
                 <g
                   key={m.id}
                   className="cursor-pointer"
                   onClick={() => explore.select(on ? null : m.id)}
+                  onPointerEnter={() => setHovered(m)}
+                  onPointerLeave={() => setHovered((cur) => (cur?.id === m.id ? null : cur))}
                 >
-                  <circle cx={m.pos[0]} cy={m.pos[2]} r={on ? 20 : 15} fill="transparent" />
+                  <circle cx={m.pos[0]} cy={m.pos[2]} r={on || isHov ? 22 : 16} fill="transparent" />
                   <circle
                     cx={m.pos[0]}
                     cy={m.pos[2]}
-                    r={on ? 13 : 9}
+                    r={on || isHov ? 14 : 9}
                     fill={m.accent}
-                    opacity={on ? 1 : 0.85}
+                    opacity={on || isHov ? 1 : 0.85}
                   />
                   <circle
                     cx={m.pos[0]}
                     cy={m.pos[2]}
-                    r={on ? 21 : 15}
+                    r={on || isHov ? 22 : 15}
                     fill="none"
                     stroke={m.accent}
-                    strokeWidth={2.5}
-                    opacity={on ? 0.9 : 0.35}
+                    strokeWidth={isHov ? 3.5 : 2.5}
+                    opacity={on ? 0.95 : isHov ? 0.85 : 0.35}
                   />
                 </g>
               );
@@ -166,7 +194,7 @@ export function ExploreMap() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="pointer-events-auto rounded-full border border-white/15 bg-black/60 px-4 py-2 font-mono text-[10px] uppercase tracking-widest2 text-white/60 backdrop-blur-md transition-colors hover:text-white"
+        className="pointer-events-auto rounded-full border border-white/15 bg-black/60 px-3 py-1.5 sm:px-4 sm:py-2 font-mono text-[9px] sm:text-[10px] uppercase tracking-widest2 text-white/60 backdrop-blur-md transition-colors hover:text-white"
       >
         {open ? "Hide map" : "Map"} · M
       </button>

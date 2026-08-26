@@ -114,15 +114,16 @@ function Card() {
   return (
     <motion.aside
       key={marker.id}
-      initial={{ opacity: 0, x: -28 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -28 }}
-      transition={{ duration: 0.55, ease }}
+      initial={{ opacity: 0, x: -20, scale: 0.98 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: -16, scale: 0.98 }}
+      transition={{ duration: 0.28, ease }}
+      style={{ willChange: "transform, opacity" }}
       className="pointer-events-auto fixed bottom-0 left-0 top-0 z-40 flex w-full max-w-[26rem] flex-col justify-center px-4 py-6 sm:px-10 sm:py-0"
     >
       <div
         data-lenis-prevent
-        className="max-h-[88dvh] overflow-y-auto rounded-2xl border border-white/12 bg-black/72 p-4 backdrop-blur-xl sm:p-6"
+        className="max-h-[88dvh] overflow-y-auto rounded-2xl border border-white/15 bg-black/82 p-4 shadow-2xl backdrop-blur-md [-webkit-backdrop-filter:blur(16px)] [transform:translateZ(0)] sm:p-6"
       >
         <div className="flex items-center gap-3">
           <span

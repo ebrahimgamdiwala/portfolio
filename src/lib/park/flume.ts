@@ -366,24 +366,24 @@ export function flume(): FlumeData {
   // water in the rider's lap. `R + rim bead` puts it on the true outside.
   const brackets: { from: Vector3; to: Vector3 }[] = [];
   const spiralEnd = stations.length - 52;
-  for (let i = 6; i < spiralEnd; i += 9) {
+  for (let i = 6; i < spiralEnd; i += 12) {
     const st = stations[i];
-    const from = st.p.clone().addScaledVector(st.u, -(R + 0.42));
+    const from = st.p.clone().addScaledVector(st.u, -(R + 0.5));
     const bearing = Math.atan2(st.p.z, st.p.x);
     brackets.push({
       from,
-      to: new Vector3(Math.cos(bearing) * coreR, from.y - 0.4, Math.sin(bearing) * coreR),
+      to: new Vector3(Math.cos(bearing) * coreR, from.y - 0.2, Math.sin(bearing) * coreR),
     });
     brackets.push({
       from,
-      to: new Vector3(Math.cos(bearing) * coreR, from.y + 5.2, Math.sin(bearing) * coreR),
+      to: new Vector3(Math.cos(bearing) * coreR, Math.max(0, from.y - 3.2), Math.sin(bearing) * coreR),
     });
   }
-  // The run-out has swung too far out to reach back, and it is low enough by
-  // then to just stand on legs in the pool.
-  for (let i = spiralEnd; i < stations.length - 6; i += 13) {
+  // The run-out has swung too far out to reach back. Support it with legs attached to the outer
+  // underside of the flume so they stay completely clear of the rider's forward view and trough.
+  for (let i = spiralEnd + 4; i < stations.length - 4; i += 22) {
     const st = stations[i];
-    const from = st.p.clone().addScaledVector(st.u, -R * 0.92);
+    const from = st.p.clone().addScaledVector(st.u, -(R + 0.5)).addScaledVector(st.n, 1.4);
     brackets.push({ from, to: new Vector3(from.x, 0, from.z) });
   }
 

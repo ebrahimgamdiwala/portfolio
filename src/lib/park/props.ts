@@ -132,6 +132,13 @@ export function buildProps(coaster: CoasterData): PropSet {
     s: [w, h, w],
   });
 
+  const nearStructure = (x: number, z: number, margin = 0) => {
+    if (FURNITURE.waterSlide.some((s) => Math.hypot(x - s.x, z - s.z) < 28 + margin)) return true;
+    if (FURNITURE.hauntedHouse.some((h) => Math.hypot(x - h.x, z - h.z) < 22 + margin)) return true;
+    if (SLOTS.scoreboard.some((s) => Math.hypot(x - s.x, z - s.z) < 20 + margin)) return true;
+    return false;
+  };
+
   /* ── bulb rings around the social zones ────────────────────────────────── */
 
   const ring = (
@@ -147,7 +154,7 @@ export function buildProps(coaster: CoasterData): PropSet {
       const a = (i / count) * Math.PI * 2;
       const x = cx + Math.cos(a) * radius;
       const z = cz + Math.sin(a) * radius;
-      if (nearTrack(x, z, 9)) continue;
+      if (nearTrack(x, z, 9) || nearStructure(x, z, 2)) continue;
       const h = height + rng.spread(0.6);
       poles.push(pole(x, z, h));
       tops.push([x, h, z]);
@@ -202,7 +209,7 @@ export function buildProps(coaster: CoasterData): PropSet {
       const d = zone.r * Math.sqrt(rng.range(0.25, 1));
       const x = zone.x + Math.cos(a) * d;
       const z = zone.z + Math.sin(a) * d;
-      if (nearTrack(x, z, 12)) continue;
+      if (nearTrack(x, z, 12) || nearStructure(x, z, 2)) continue;
       lamps.push({ x, z, h: rng.range(8.5, 12.5), rot: rng.range(0, Math.PI * 2) });
     }
   }
@@ -231,6 +238,7 @@ export function buildProps(coaster: CoasterData): PropSet {
     const z = ZONES.gardens.z + Math.sin(a) * d;
     if (nearTrack(x, z, 16)) continue;
     if (FURNITURE.kiosks.some((k) => Math.hypot(x - k.x, z - k.z) < 12)) continue;
+    if (nearStructure(x, z, 4)) continue;
     trees.push({
       x,
       z,
@@ -266,7 +274,7 @@ export function buildProps(coaster: CoasterData): PropSet {
       const d = zone.r * Math.sqrt(rng.unit()) * 0.92;
       const x = zone.x + Math.cos(a) * d;
       const z = zone.z + Math.sin(a) * d;
-      if (nearTrack(x, z, 5)) continue;
+      if (nearTrack(x, z, 5) || nearStructure(x, z, 0)) continue;
       crowdPts.push(x, z, rng.range(1.55, 1.92), rng.range(0, Math.PI * 2));
     }
   }

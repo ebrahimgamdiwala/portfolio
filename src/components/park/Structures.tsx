@@ -42,7 +42,7 @@ const IDENT_Q = new Quaternion();
 
 function Gate() {
   const bulbs = useRef<InstancedMesh>(null);
-  const nameTex = useMemo(() => neonText(park.name, "#ffd08a", { width: 2048, height: 288 }), []);
+  const nameTex = useMemo(() => neonText(park.name, "#e6b06c", { width: 2048, height: 288 }), []);
   const mottoTex = useMemo(
     () => neonText(park.gateMotto, "#8fd8ff", { width: 1024, height: 128, mono: true, weight: "600" }),
     [],
@@ -126,8 +126,9 @@ function Gate() {
           transparent
           depthWrite={false}
           blending={AdditiveBlending}
+          opacity={0.65}
           toneMapped={false}
-                  />
+        />
       </mesh>
       <mesh position={[0, H - 3.2, 1.8]}>
         <planeGeometry args={[W * 0.62, 4]} />

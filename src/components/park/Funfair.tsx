@@ -861,7 +861,7 @@ function towerSteel(brackets: FlumeData["brackets"]): Piece[] {
   // deck railings, left open at each flume gate
   for (let i = 0; i < 48; i++) {
     const a = (i / 48) * Math.PI * 2;
-    const gate = FLUME_YAW.some((g) => Math.abs(((a - g + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.34);
+    const gate = FLUME_YAW.some((g) => Math.abs(((a - g + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.45);
     if (gate) continue;
     const b = ((i + 1) / 48) * Math.PI * 2;
     const R = 7.6;
@@ -1285,59 +1285,347 @@ function PirateShip({ slot, index }: { slot: Slot; index: number }) {
 
 function HauntedHouse({ slot }: { slot: Slot }) {
   const windows = useRef<(MeshBasicMaterial | null)[]>([]);
-  const W = 30;
-  const H = 22;
+  const lanterns = useRef<(MeshBasicMaterial | null)[]>([]);
+  const pumpkinGlow = useRef<MeshBasicMaterial>(null);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
+    // Multi-phase eerie flickering across different window panes
     windows.current.forEach((m, i) => {
-      if (m) m.opacity = 0.45 + 0.55 * Math.abs(Math.sin(t * (0.7 + i * 0.23) + i));
+      if (!m) return;
+      const pulse = Math.sin(t * (1.2 + i * 0.37) + i * 1.7);
+      const glitch = Math.sin(t * 8.5 + i * 3.1) > 0.88 ? 0.2 : 1.0;
+      m.opacity = (0.35 + 0.65 * Math.abs(pulse)) * glitch;
     });
+    // Porch lantern flame flicker
+    lanterns.current.forEach((m, i) => {
+      if (!m) return;
+      m.opacity = 0.75 + 0.25 * Math.sin(t * 11 + i * 2.3);
+    });
+    if (pumpkinGlow.current) {
+      pumpkinGlow.current.opacity = 0.8 + 0.2 * Math.sin(t * 7.2);
+    }
   });
+
+  const wallMat = "#1e1a24";
+  const trimMat = "#141118";
+  const roofMat = "#110e14";
+  const woodMat = "#29211a";
+  const stoneMat = "#1c1a20";
+  const ironMat = "#121217";
 
   return (
     <group position={[slot.x, 0, slot.z]} rotation={[0, slot.rot, 0]}>
-      <mesh position={[0, H / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[W, H, 20]} />
-        <meshStandardMaterial color="#211c26" roughness={0.9} />
+      {/* ── Stone Foundation & Base Steps ── */}
+      <mesh position={[0, 0.6, 0]} castShadow receiveShadow>
+        <boxGeometry args={[36, 1.2, 26]} />
+        <meshStandardMaterial color={stoneMat} roughness={0.92} />
       </mesh>
-      {/* crooked roof */}
-      <mesh position={[0, H + 4.5, 0]} rotation={[0, Math.PI / 4, 0.06]} castShadow>
-        <coneGeometry args={[W * 0.78, 11, 4]} />
-        <meshStandardMaterial color="#171319" roughness={0.92} />
+      {/* Front Entrance Steps */}
+      {[0, 1, 2].map((step) => (
+        <mesh
+          key={`step-${step}`}
+          position={[0, 0.2 + step * 0.25, 13.5 + step * 0.8]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[14 - step * 1.5, 0.25, 1.2]} />
+          <meshStandardMaterial color={stoneMat} roughness={0.9} />
+        </mesh>
+      ))}
+
+      {/* ── Main Manor House Wings ── */}
+      {/* Central Manor Block */}
+      <mesh position={[0, 9.6, 0]} castShadow receiveShadow>
+        <boxGeometry args={[18, 18, 20]} />
+        <meshStandardMaterial color={wallMat} roughness={0.88} />
       </mesh>
-      {/* turrets */}
+      {/* Left Gabled Wing */}
+      <mesh position={[-11.5, 8.2, -1]} castShadow receiveShadow>
+        <boxGeometry args={[13, 15.2, 18]} />
+        <meshStandardMaterial color={wallMat} roughness={0.88} />
+      </mesh>
+      {/* Right Bay Wing */}
+      <mesh position={[11, 9.2, 1]} castShadow receiveShadow>
+        <boxGeometry args={[12, 17.2, 18]} />
+        <meshStandardMaterial color={wallMat} roughness={0.88} />
+      </mesh>
+
+      {/* ── Steep Pitched Victorian Roofs ── */}
+      {/* Central High Mansard / Pitched Roof */}
+      <mesh position={[0, 22.8, 0]} rotation={[0, Math.PI / 4, 0.04]} castShadow>
+        <coneGeometry args={[15.5, 10, 4]} />
+        <meshStandardMaterial color={roofMat} roughness={0.9} />
+      </mesh>
+      {/* Left Wing Gabled Roof */}
+      <mesh position={[-11.5, 18.5, -1]} rotation={[0, Math.PI / 4, -0.05]} castShadow>
+        <coneGeometry args={[11.5, 8.5, 4]} />
+        <meshStandardMaterial color={roofMat} roughness={0.9} />
+      </mesh>
+      {/* Right Wing Gabled Roof */}
+      <mesh position={[11, 20.2, 1]} rotation={[0, Math.PI / 4, 0.03]} castShadow>
+        <coneGeometry args={[10.8, 9, 4]} />
+        <meshStandardMaterial color={roofMat} roughness={0.9} />
+      </mesh>
+
+      {/* ── Central Spire / Clock Tower ── */}
+      <mesh position={[0, 24, 2]} castShadow receiveShadow>
+        <boxGeometry args={[8.5, 14, 8.5]} />
+        <meshStandardMaterial color={wallMat} roughness={0.85} />
+      </mesh>
+      {/* Tower Balcony / Cornice */}
+      <mesh position={[0, 31.2, 2]} castShadow>
+        <boxGeometry args={[10, 0.8, 10]} />
+        <meshStandardMaterial color={trimMat} roughness={0.9} />
+      </mesh>
+      {/* Tower Spire Roof */}
+      <mesh position={[0, 37.5, 2]} rotation={[0, Math.PI / 4, 0.03]} castShadow>
+        <coneGeometry args={[6.8, 12, 4]} />
+        <meshStandardMaterial color={roofMat} roughness={0.92} />
+      </mesh>
+      {/* Tower Iron Finial / Spire Spike */}
+      <mesh position={[0, 44.5, 2]}>
+        <cylinderGeometry args={[0.08, 0.18, 3.5, 6]} />
+        <meshStandardMaterial color={ironMat} metalness={0.8} />
+      </mesh>
+      {/* Bat / Weathervane Silhouette */}
+      <mesh position={[0, 45.8, 2]} rotation={[0, 0.6, 0]}>
+        <planeGeometry args={[1.6, 0.8]} />
+        <meshBasicMaterial color="#000000" side={DoubleSide} />
+      </mesh>
+
+      {/* ── Corner Turrets ── */}
       {[-1, 1].map((sx) => (
-        <group key={sx} position={[(sx * W) / 2.4, 0, 8]}>
-          <mesh position={[0, H * 0.62, 0]} castShadow>
-            <cylinderGeometry args={[3.2, 3.6, H * 1.24, 10]} />
-            <meshStandardMaterial color="#1d1922" roughness={0.9} />
+        <group key={`turret-${sx}`} position={[sx * 15.5, 0, 7.5]}>
+          <mesh position={[0, 11, 0]} castShadow>
+            <cylinderGeometry args={[2.8, 3.2, 20.8, 10]} />
+            <meshStandardMaterial color={wallMat} roughness={0.88} />
           </mesh>
-          <mesh position={[0, H * 1.24 + 4, 0]} castShadow>
-            <coneGeometry args={[4.2, 8, 10]} />
-            <meshStandardMaterial color="#141117" roughness={0.92} />
+          <mesh position={[0, 21.6, 0]} castShadow>
+            <cylinderGeometry args={[3.4, 2.9, 0.8, 10]} />
+            <meshStandardMaterial color={trimMat} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 26, 0]} castShadow>
+            <coneGeometry args={[3.8, 8.5, 10]} />
+            <meshStandardMaterial color={roofMat} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 30.6, 0]}>
+            <cylinderGeometry args={[0.06, 0.12, 1.8, 6]} />
+            <meshStandardMaterial color={ironMat} metalness={0.8} />
           </mesh>
         </group>
       ))}
-      {/* arched windows, flickering out of sync */}
-      {[-9, 0, 9].map((x, i) =>
-        [7, 15].map((y, j) => (
-          <mesh key={`${x}-${y}`} position={[x, y, 10.15]}>
-            <planeGeometry args={[3.6, 5]} />
+
+      {/* ── Covered Front Porch & Portico ── */}
+      <group position={[0, 0, 10]}>
+        {/* Weathered Porch Floor */}
+        <mesh position={[0, 0.9, 2.8]} castShadow receiveShadow>
+          <boxGeometry args={[16, 0.6, 6.2]} />
+          <meshStandardMaterial color={woodMat} roughness={0.95} />
+        </mesh>
+        {/* Porch Columns */}
+        {[-7, -2.5, 2.5, 7].map((px, i) => (
+          <group key={`col-${i}`} position={[px, 0.9, 5.4]} rotation={[0.02 * (i % 2 ? -1 : 1), 0, 0.03 * (i < 2 ? -1 : 1)]}>
+            <mesh position={[0, 3.2, 0]} castShadow>
+              <boxGeometry args={[0.5, 6.4, 0.5]} />
+              <meshStandardMaterial color={woodMat} roughness={0.9} />
+            </mesh>
+            {/* Column Capital */}
+            <mesh position={[0, 6.3, 0]}>
+              <boxGeometry args={[0.8, 0.4, 0.8]} />
+              <meshStandardMaterial color={trimMat} roughness={0.9} />
+            </mesh>
+          </group>
+        ))}
+        {/* Porch Overhang / Awning Roof */}
+        <mesh position={[0, 7.6, 3.2]} rotation={[-0.18, 0, 0]} castShadow>
+          <boxGeometry args={[17.5, 0.6, 7]} />
+          <meshStandardMaterial color={roofMat} roughness={0.9} />
+        </mesh>
+        {/* Porch Pediment Peak */}
+        <mesh position={[0, 8.8, 5.8]} rotation={[0, 0, Math.PI / 4]} castShadow>
+          <boxGeometry args={[3.2, 3.2, 0.5]} />
+          <meshStandardMaterial color={trimMat} roughness={0.9} />
+        </mesh>
+        {/* Porch Railings */}
+        {[-5.0, 5.0].map((rx) => (
+          <mesh key={`rail-${rx}`} position={[rx, 2.2, 5.4]}>
+            <boxGeometry args={[3.6, 1.8, 0.12]} />
+            <meshStandardMaterial color={ironMat} metalness={0.7} roughness={0.6} />
+          </mesh>
+        ))}
+
+        {/* Eerie Lanterns on Porch Pillars */}
+        {[-7, 7].map((lx, i) => (
+          <group key={`lantern-${lx}`} position={[lx, 5.0, 5.7]}>
+            <mesh>
+              <boxGeometry args={[0.4, 0.7, 0.4]} />
+              <meshStandardMaterial color={ironMat} metalness={0.8} roughness={0.3} />
+            </mesh>
+            <mesh position={[0, 0, 0]}>
+              <boxGeometry args={[0.26, 0.5, 0.26]} />
+              <meshBasicMaterial
+                ref={(el) => void (lanterns.current[i] = el)}
+                color="#ff9922"
+                transparent
+                opacity={0.85}
+                toneMapped={false}
+              />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Carved Glowing Jack-o'-Lanterns on Porch Steps */}
+        <group position={[-5.2, 1.5, 4.2]} rotation={[0, 0.4, 0]}>
+          <mesh castShadow>
+            <sphereGeometry args={[0.55, 10, 8]} />
+            <meshStandardMaterial color="#c25100" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.05, 0.5]}>
+            <planeGeometry args={[0.4, 0.3]} />
+            <meshBasicMaterial ref={pumpkinGlow} color="#ffaa11" transparent opacity={0.9} toneMapped={false} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* ── Recessed Gothic Entrance Door ── */}
+      <group position={[0, 1.2, 10.05]}>
+        <mesh position={[0, 4.2, 0]}>
+          <boxGeometry args={[5.2, 8.4, 0.3]} />
+          <meshStandardMaterial color={trimMat} roughness={0.9} />
+        </mesh>
+        {/* Double Doors */}
+        <mesh position={[0, 3.8, 0.1]}>
+          <planeGeometry args={[4.4, 7.4]} />
+          <meshStandardMaterial color="#1a1410" roughness={0.85} />
+        </mesh>
+        {/* Transom Grille / Iron Studs */}
+        <mesh position={[0, 7.0, 0.15]}>
+          <circleGeometry args={[1.8, 12, 0, Math.PI]} />
+          <meshBasicMaterial color="#301808" toneMapped={false} />
+        </mesh>
+      </group>
+
+      {/* ── Peaked Attic Dormers on Roof ── */}
+      {[-7, 7].map((dx) => (
+        <group key={`dormer-${dx}`} position={[dx, 20.5, 4.5]}>
+          <mesh castShadow>
+            <boxGeometry args={[3.2, 3.4, 3.8]} />
+            <meshStandardMaterial color={wallMat} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 2.2, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
+            <coneGeometry args={[2.8, 2.4, 4]} />
+            <meshStandardMaterial color={roofMat} roughness={0.9} />
+          </mesh>
+          {/* Dormer Window */}
+          <mesh position={[0, 0.2, 1.95]}>
+            <planeGeometry args={[1.8, 2.2]} />
+            <meshBasicMaterial color="#ffc048" transparent opacity={0.7} toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* ── Crooked Brick Chimneys ── */}
+      <group position={[-9, 21, -4]} rotation={[0.04, 0, -0.06]}>
+        <mesh position={[0, 4.5, 0]} castShadow>
+          <boxGeometry args={[2.2, 9, 2.2]} />
+          <meshStandardMaterial color="#3b201d" roughness={0.88} />
+        </mesh>
+        <mesh position={[0, 9.3, 0]}>
+          <boxGeometry args={[2.6, 0.6, 2.6]} />
+          <meshStandardMaterial color={trimMat} roughness={0.9} />
+        </mesh>
+        {/* Chimney Pots */}
+        {[-0.5, 0.5].map((cx) => (
+          <mesh key={`pot-${cx}`} position={[cx, 10.2, 0]}>
+            <cylinderGeometry args={[0.35, 0.4, 1.4, 8]} />
+            <meshStandardMaterial color="#221411" roughness={0.9} />
+          </mesh>
+        ))}
+      </group>
+      <group position={[8.5, 23, -3]} rotation={[-0.03, 0, 0.05]}>
+        <mesh position={[0, 4, 0]} castShadow>
+          <boxGeometry args={[2.0, 8, 2.0]} />
+          <meshStandardMaterial color="#3b201d" roughness={0.88} />
+        </mesh>
+        <mesh position={[0, 8.3, 0]}>
+          <boxGeometry args={[2.4, 0.6, 2.4]} />
+          <meshStandardMaterial color={trimMat} roughness={0.9} />
+        </mesh>
+      </group>
+
+      {/* ── Gothic Windows with Sills, Mullions & Multi-colour Eerie Glow ── */}
+      {/* Front Façade Windows */}
+      {[
+        { x: -11.5, y: 6.5, z: 8.05, w: 2.8, h: 4.8, col: "#7cff9e", boarded: true },
+        { x: -11.5, y: 13.5, z: 8.05, w: 2.8, h: 4.8, col: "#ffb044", boarded: false },
+        { x: -5.0, y: 13.5, z: 10.05, w: 3.0, h: 5.2, col: "#7cff9e", boarded: false },
+        { x: 5.0, y: 13.5, z: 10.05, w: 3.0, h: 5.2, col: "#c084fc", boarded: false },
+        { x: 11.5, y: 6.5, z: 10.05, w: 2.8, h: 4.8, col: "#ff9033", boarded: false },
+        { x: 11.5, y: 14.0, z: 10.05, w: 2.8, h: 4.8, col: "#7cff9e", boarded: true },
+        { x: 0, y: 27.5, z: 6.3, w: 2.6, h: 4.2, col: "#a855f7", boarded: false },
+      ].map((win, idx) => (
+        <group key={`win-${idx}`} position={[win.x, win.y, win.z]}>
+          {/* Stone Window Trim & Sill */}
+          <mesh position={[0, 0, 0]}>
+            <boxGeometry args={[win.w + 0.6, win.h + 0.6, 0.2]} />
+            <meshStandardMaterial color={trimMat} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, -win.h / 2 - 0.2, 0.15]}>
+            <boxGeometry args={[win.w + 1.0, 0.35, 0.45]} />
+            <meshStandardMaterial color={stoneMat} roughness={0.9} />
+          </mesh>
+          {/* Glowing Animated Glass Pane */}
+          <mesh position={[0, 0, 0.12]}>
+            <planeGeometry args={[win.w, win.h]} />
             <meshBasicMaterial
-              ref={(m) => void (windows.current[i * 2 + j] = m)}
-              color="#7cff9e"
+              ref={(el) => void (windows.current[idx] = el)}
+              color={win.col}
               transparent
-              opacity={0.6}
+              opacity={0.65}
               toneMapped={false}
             />
           </mesh>
-        )),
-      )}
-      <mesh position={[0, 4.5, 10.2]}>
-        <planeGeometry args={[8, 9]} />
-        <meshBasicMaterial color="#20301f" toneMapped={false} />
-      </mesh>
+          {/* Mullion Crossbars (+) */}
+          <mesh position={[0, 0, 0.16]}>
+            <boxGeometry args={[win.w, 0.12, 0.08]} />
+            <meshStandardMaterial color={woodMat} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 0, 0.16]}>
+            <boxGeometry args={[0.12, win.h, 0.08]} />
+            <meshStandardMaterial color={woodMat} roughness={0.9} />
+          </mesh>
+          {/* Crooked Boarded Up Planks */}
+          {win.boarded && (
+            <group position={[0, 0, 0.2]}>
+              <mesh position={[0, -0.6, 0]} rotation={[0, 0, 0.12]}>
+                <boxGeometry args={[win.w + 0.4, 0.5, 0.1]} />
+                <meshStandardMaterial color="#36291e" roughness={0.9} />
+              </mesh>
+              <mesh position={[0, 0.7, 0]} rotation={[0, 0, -0.15]}>
+                <boxGeometry args={[win.w + 0.4, 0.5, 0.1]} />
+                <meshStandardMaterial color="#36291e" roughness={0.9} />
+              </mesh>
+            </group>
+          )}
+        </group>
+      ))}
+
+      {/* ── Wrought Iron Widow's Walk Roof Cresting ── */}
+      <group position={[0, 24.2, 0]}>
+        {[-8, 8].map((rx) => (
+          <mesh key={`crest-x-${rx}`} position={[rx, 0.6, 0]}>
+            <boxGeometry args={[0.1, 1.2, 16]} />
+            <meshStandardMaterial color={ironMat} metalness={0.75} roughness={0.5} />
+          </mesh>
+        ))}
+        {[-8, 8].map((rz) => (
+          <mesh key={`crest-z-${rz}`} position={[0, 0.6, rz]}>
+            <boxGeometry args={[16, 1.2, 0.1]} />
+            <meshStandardMaterial color={ironMat} metalness={0.75} roughness={0.5} />
+          </mesh>
+        ))}
+      </group>
     </group>
   );
 }

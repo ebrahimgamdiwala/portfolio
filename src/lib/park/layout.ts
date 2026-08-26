@@ -112,14 +112,14 @@ export const FURNITURE = {
   bumperCars: [{ x: 14, z: -96, rot: 0.16 }],
   bigTop: [{ x: 72, z: 34, rot: -0.25 }],
   waterTower: [{ x: -104, z: 34, rot: 0.4 }],
-  // Pushed clear of the haunted house — a 26-unit splash pool and a 20-unit
-  // house standing 36 apart were sharing ten units of the same ground.
+  // Placed in the spacious right plaza/midway quadrant with generous clearance
+  // from the entrance avenue, brake run, hoardings, and structures.
   waterSlide: [
-    { x: -30, z: 150, rot: 1.1 },
+    { x: 72, z: 134, rot: -0.6 },
     { x: 116, z: -48, rot: -1.9 },
   ],
   pirateShip: [{ x: 46, z: -22, rot: -2.3 }],
-  hauntedHouse: [{ x: -76, z: 118, rot: -0.4 }],
+  hauntedHouse: [{ x: -150, z: 160, rot: 2.38 }],
   kiosks: [
     { x: -14, z: 24, rot: 1.2 },
     { x: 22, z: 14, rot: -0.6 },
