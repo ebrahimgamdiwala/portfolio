@@ -167,9 +167,9 @@ function Carousel({ slot, seed, index }: { slot: Slot; seed: number; index: numb
 
         {/* Coat, tack and poles are three instanced batches rather than 28
             separate meshes. Fourteen horses each drawn twice with a clearcoat
-            shader, times two carousels, was 56 draw calls of the most
-            expensive material in the park — enough on its own to drag the
-            quality tier down and take the fireworks with it. */}
+            shader was 28 draw calls of the most expensive material in the
+            park — enough on its own to drag the quality tier down and take
+            the fireworks with it. */}
         <instancedMesh
           ref={coats}
           args={[horseCoat(), undefined, COUNT]}

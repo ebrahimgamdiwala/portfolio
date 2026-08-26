@@ -100,10 +100,7 @@ export const SLOTS: Record<AttractionKind, Slot[]> = {
  * behind everything that does carry content.
  */
 export const FURNITURE = {
-  carousel: [
-    { x: -46, z: 62, rot: 0.3 },
-    { x: 66, z: -44, rot: -0.8 },
-  ],
+  carousel: [{ x: -46, z: 62, rot: 0.3 }],
   swingRide: [
     { x: 26, z: 96, rot: 0 },
     { x: -88, z: -18, rot: 0.5 },
