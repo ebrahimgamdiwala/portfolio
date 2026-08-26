@@ -36,6 +36,7 @@ const want = new Vector3();
 const flat = new Vector3();
 const seatOut = new Vector3();
 const fwd = new Vector3();
+const camUp = new Vector3();
 const toMarker = new Vector3();
 const UP = new Vector3(0, 1, 0);
 const pushed = { x: 0, z: 0 };
@@ -84,6 +85,8 @@ export function ExploreCamera() {
   const boarded = useRef<string | null>(null);
   /** Walking heading, parked while strapped into a ride. */
   const stowed = useRef({ yaw: 0, pitch: 0 });
+  /** Smoothed view roll, so far only fed by the flume's banking. */
+  const slideRoll = useRef(0);
 
   /* ── input ─────────────────────────────────────────────────────────────── */
 
@@ -226,14 +229,19 @@ export function ExploreCamera() {
       const isBumperCars = riding.startsWith("bumperCars");
 
       if (isSlide) {
-        const fwdX = Math.sin(seat.yaw);
-        const fwdZ = Math.cos(seat.yaw);
-        cam.position.set(seat.pos.x, seat.pos.y + 4.5, seat.pos.z);
+        // The flume publishes an eye already sitting on the trough floor, so
+        // take it as given and look where the slide is actually pointing —
+        // down its own gradient, rolled into its own banking.
+        const cp = Math.cos(seat.pitch);
+        cam.position.copy(seat.pos);
         aim.set(
-          cam.position.x + fwdX * 14,
-          cam.position.y - 3,
-          cam.position.z + fwdZ * 14,
+          cam.position.x + Math.sin(seat.yaw) * cp * 14,
+          cam.position.y + Math.sin(seat.pitch) * 14,
+          cam.position.z + Math.cos(seat.yaw) * cp * 14,
         );
+        // Lag the roll a little. Matching the trough frame-for-frame reads as
+        // the horizon twitching rather than as a rider being thrown outward.
+        slideRoll.current += (seat.roll * 0.7 - slideRoll.current) * Math.min(1, dt * 6);
       } else if (isCarousel) {
         const outX = Math.sin(seat.yaw);
         const outZ = Math.cos(seat.yaw);
@@ -324,10 +332,18 @@ export function ExploreCamera() {
         stowed.current = { yaw: yaw.current, pitch: pitch.current };
         yaw.current = 0;
         pitch.current = 0;
+        slideRoll.current = 0;
       }
       freeLook(cam.position, aim, yaw.current, pitch.current);
 
-      cam.up.set(0, 1, 0);
+      if (isSlide && slideRoll.current) {
+        // Rolling the up-vector about the view axis is the whole banking
+        // effect — lookAt does the rest.
+        camUp.subVectors(aim, cam.position).normalize();
+        cam.up.set(0, 1, 0).applyAxisAngle(camUp, slideRoll.current);
+      } else {
+        cam.up.set(0, 1, 0);
+      }
       cam.lookAt(aim);
       const wantNear = isBumperCars ? 0.05 : 0.1;
       if (cam.near !== wantNear) {
@@ -346,6 +362,8 @@ export function ExploreCamera() {
     // stepped off — give the walker back the heading they had before boarding
     if (boarded.current) {
       boarded.current = null;
+      slideRoll.current = 0;
+      cam.up.set(0, 1, 0);
       yaw.current = stowed.current.yaw;
       pitch.current = stowed.current.pitch;
       if (cam.near !== 0.1) {

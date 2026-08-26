@@ -6,6 +6,7 @@ import { buildCoaster, makeProgressMap, type CoasterData } from "./park/coaster"
 import { placeHoardings, type Hoarding } from "./park/signage";
 import { buildProps, type PropSet } from "./park/props";
 import { FURNITURE, LANDMARKS, SLOTS } from "./park/layout";
+import { flume } from "./park/flume";
 
 export interface ParkWorld {
   coaster: CoasterData;
@@ -46,6 +47,7 @@ export function usePark() {
         (window as unknown as { __park?: unknown }).__park = {
           ...cache,
           layout: { SLOTS, FURNITURE, LANDMARKS },
+          flume: flume(),
         };
       }
       if (!cancelled) setWorld(cache);

@@ -112,8 +112,10 @@ export const FURNITURE = {
   bumperCars: [{ x: 14, z: -96, rot: 0.16 }],
   bigTop: [{ x: 72, z: 34, rot: -0.25 }],
   waterTower: [{ x: -104, z: 34, rot: 0.4 }],
+  // Pushed clear of the haunted house — a 26-unit splash pool and a 20-unit
+  // house standing 36 apart were sharing ten units of the same ground.
   waterSlide: [
-    { x: -46, z: 138, rot: 1.1 },
+    { x: -30, z: 150, rot: 1.1 },
     { x: 116, z: -48, rot: -1.9 },
   ],
   pirateShip: [{ x: 46, z: -22, rot: -2.3 }],
@@ -130,7 +132,7 @@ export const FURNITURE = {
     { x: 130, z: 8, rot: -1.1 },
     { x: -120, z: -66, rot: 0.9 },
     { x: 42, z: -78, rot: 2.6 },
-    { x: -8, z: 132, rot: 0.1 },
+    { x: 0, z: 128, rot: 0.1 },
   ],
 } as const satisfies Record<string, readonly Slot[]>;
 

@@ -84,17 +84,32 @@ export const explore = {
  */
 export const userDrive = { fwd: 0, turn: 0 };
 
-export const seats: Record<string, { pos: Vector3; yaw: number }> = {
-  dropTower: { pos: new Vector3(), yaw: 0 },
-  ferrisWheel: { pos: new Vector3(), yaw: 0 },
-  carousel0: { pos: new Vector3(), yaw: 0 },
-  waterSlide0: { pos: new Vector3(), yaw: 0 },
-  waterSlide1: { pos: new Vector3(), yaw: 0 },
-  teacups0: { pos: new Vector3(), yaw: 0 },
-  teacups1: { pos: new Vector3(), yaw: 0 },
-  swingRide0: { pos: new Vector3(), yaw: 0 },
-  swingRide1: { pos: new Vector3(), yaw: 0 },
-  pirateShip0: { pos: new Vector3(), yaw: 0 },
-  bumperCars0: { pos: new Vector3(), yaw: 0 },
-  bumperCars1: { pos: new Vector3(), yaw: 0 },
+export interface Seat {
+  pos: Vector3;
+  yaw: number;
+  /**
+   * Nose-up angle, radians. Only rides that actually tip you publish it — a
+   * flume spends its whole length pointing downhill, and aiming the camera at
+   * a fixed droop instead was what made the slide feel like a fly-through.
+   */
+  pitch: number;
+  /** Roll about the view axis. So far only the flume's banking uses it. */
+  roll: number;
+}
+
+const seat = (): Seat => ({ pos: new Vector3(), yaw: 0, pitch: 0, roll: 0 });
+
+export const seats: Record<string, Seat> = {
+  dropTower: seat(),
+  ferrisWheel: seat(),
+  carousel0: seat(),
+  waterSlide0: seat(),
+  waterSlide1: seat(),
+  teacups0: seat(),
+  teacups1: seat(),
+  swingRide0: seat(),
+  swingRide1: seat(),
+  pirateShip0: seat(),
+  bumperCars0: seat(),
+  bumperCars1: seat(),
 };

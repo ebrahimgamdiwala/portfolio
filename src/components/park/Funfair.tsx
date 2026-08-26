@@ -18,6 +18,14 @@ import {
 } from "three";
 import { beam } from "@/lib/park/build";
 import type { Piece } from "@/lib/park/coaster";
+import {
+  FLUME,
+  SPLASH_RUN,
+  flume,
+  makePose,
+  slidePose,
+  type FlumeData,
+} from "@/lib/park/flume";
 import { FURNITURE, type Slot } from "@/lib/park/layout";
 import { paintedSteel, stripes } from "@/lib/park/textures";
 import { Rng } from "@/lib/park/rand";
@@ -37,6 +45,10 @@ import { Pieces } from "./primitives/Pieces";
  */
 
 const CANDY = ["#ff4d6d", "#ffd23f", "#4dd6ff", "#8f6bff", "#4ade80", "#ff8b3d"];
+
+/** Frame-loop scratch. Allocating a Vector3 per frame per ride is not free. */
+const scratchA = new Vector3();
+const basis = new Matrix4();
 
 function Frame({ pieces, color }: { pieces: Piece[]; color: string }) {
   return (
@@ -756,164 +768,327 @@ function WaterTower({ slot }: { slot: Slot }) {
 
 /* ── water park ───────────────────────────────────────────────────────────── */
 
-const FLUME_COLOURS = ["#39d3ff", "#ffcf3f", "#ff5d9e"];
+const FLUME_COLOURS = ["#2ec5f6", "#ffc531", "#ff5d8f"];
+/** Rider's eye above the trough floor — about a metre, at the park's scale. */
+const EYE_IN_TROUGH = 2.05;
+/** How long you wallow in the pool before the gate sends you round again. */
+const SPLASH_HOLD = 2.6;
+/** Yaw of each flume. A third of a turn apart, which is the whole design. */
+const FLUME_YAW = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
+/**
+ * How high above the trough floor the raft sits, along the (banked) up axis.
+ * The channel is a circular arc, not a flat gutter, so it narrows fast toward
+ * the bottom — a raft has to float high enough up that arc for the channel to
+ * actually be wider than the raft, or its rim clips out through the shell
+ * wall wherever anyone looks at the slide from outside.
+ */
+const RAFT_FLOAT = 1.15;
+const RAFT_R = 0.85;
+const RAFT_TUBE = 0.32;
 
 /**
- * A flume tower. Three helices spiral down from the platform into a splash
- * pool, each swept as a tube along a descending spiral. The water surface is a
- * low-roughness plane, so it takes the whole park's neon out of the environment
- * map and lays it back down flat — which is what actually sells it as water.
+ * The tower the flumes hang off: columns on a ring, octagonal ring beams
+ * between them, a spiral stair up the middle and the cantilever brackets that
+ * carry each trough. The stair keeps inside the column ring and the brackets
+ * only ever run inward, so nothing here can reach into a flume.
  */
-function WaterSlide({ slot, seed, index }: { slot: Slot; seed: number; index: number }) {
-  const H = 42;
-  const R_POOL = 26;
-  const surface = useRef<Mesh>(null);
-  const riders = useRef<(Mesh | null)[]>([]);
-  const boardTime = useRef(-1);
+function towerSteel(brackets: FlumeData["brackets"]): Piece[] {
+  const { deck, coreR } = FLUME;
+  const out: Piece[] = [];
+  const RING = 8;
 
-  const flumes = useMemo(
-    () =>
-      FLUME_COLOURS.map((_, k) => {
-        const pts: Vector3[] = [];
-        const turns = 1.7 + k * 0.35;
-        const start = (k / 3) * Math.PI * 2 + seed;
-        const rTop = 4.5;
-        const rBottom = 15 + k * 3;
-        const STEPS = 90;
-        for (let i = 0; i <= STEPS; i++) {
-          const t = i / STEPS;
-          // ease the descent so the last stretch runs out flat into the pool
-          const drop = 1 - Math.pow(1 - t, 1.7);
-          const a = start + t * turns * Math.PI * 2 * (k % 2 ? -1 : 1);
-          const r = rTop + (rBottom - rTop) * Math.pow(t, 0.75);
-          pts.push(new Vector3(Math.cos(a) * r, H - 3 - drop * (H - 5), Math.sin(a) * r));
-        }
-        const curve = new CatmullRomCurve3(pts, false, "catmullrom", 0.5);
-        return { curve, colour: FLUME_COLOURS[k] };
-      }),
-    [seed],
-  );
-
-  const tower = useMemo(() => {
-    const out: Piece[] = [];
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-      const foot = new Vector3(Math.cos(a) * 5, 0, Math.sin(a) * 5);
-      const top = new Vector3(Math.cos(a) * 3.4, H, Math.sin(a) * 3.4);
-      out.push(beam(foot, top, 0.7));
-      for (let b = 1; b <= 7; b++) {
-        const y = (b / 8) * H;
-        const nb = ((i + 1) / 4) * Math.PI * 2 + Math.PI / 4;
-        const w = 5 - (y / H) * 1.6;
+  // columns and their ring beams
+  for (let i = 0; i < RING; i++) {
+    const a = (i / RING) * Math.PI * 2;
+    const b = ((i + 1) / RING) * Math.PI * 2;
+    out.push(
+      beam(
+        new Vector3(Math.cos(a) * coreR, 0, Math.sin(a) * coreR),
+        new Vector3(Math.cos(a) * coreR, deck + 1.2, Math.sin(a) * coreR),
+        0.52,
+      ),
+    );
+    for (let y = 4.5; y < deck; y += 4.5) {
+      out.push(
+        beam(
+          new Vector3(Math.cos(a) * coreR, y, Math.sin(a) * coreR),
+          new Vector3(Math.cos(b) * coreR, y, Math.sin(b) * coreR),
+          0.28,
+        ),
+      );
+      // one diagonal per bay, alternating, so the cage reads as braced
+      if ((i + Math.round(y)) % 2 === 0) {
         out.push(
           beam(
-            new Vector3(Math.cos(a) * w, y, Math.sin(a) * w),
-            new Vector3(Math.cos(nb) * w, y, Math.sin(nb) * w),
-            0.26,
+            new Vector3(Math.cos(a) * coreR, y, Math.sin(a) * coreR),
+            new Vector3(Math.cos(b) * coreR, y + 4.5, Math.sin(b) * coreR),
+            0.19,
           ),
         );
       }
     }
-    return out;
-  }, []);
+  }
 
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    // ripples: nudge the normal map around rather than displace the mesh
-    const mat = surface.current?.material as MeshStandardMaterial | undefined;
-    if (mat?.normalMap) {
-      mat.normalMap.offset.set(Math.sin(t * 0.09) * 0.05, t * 0.014);
+  // spiral stair up the core, treads stopping short of the columns
+  const TREADS = Math.round(deck / 0.5);
+  const TURNS = 5.5;
+  for (let i = 1; i <= TREADS; i++) {
+    const t = i / TREADS;
+    const y = t * deck;
+    const a = t * TURNS * Math.PI * 2;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    out.push(
+      beam(new Vector3(c * 1.0, y, s * 1.0), new Vector3(c * 4.1, y, s * 4.1), 1.0, 0.16),
+    );
+    if (i % 4 === 0) {
+      out.push(
+        beam(new Vector3(c * 4.1, y, s * 4.1), new Vector3(c * 4.1, y + 2.2, s * 4.1), 0.13),
+      );
+      const pa = ((i - 4) / TREADS) * TURNS * Math.PI * 2;
+      out.push(
+        beam(
+          new Vector3(Math.cos(pa) * 4.1, y - 2 + 2.2, Math.sin(pa) * 4.1),
+          new Vector3(c * 4.1, y + 2.2, s * 4.1),
+          0.11,
+        ),
+      );
     }
-    // a rider running each flume, forever
-    riders.current.forEach((m, k) => {
-      if (!m) return;
-      const phase = (t * 0.17 + k * 0.37) % 1;
-      flumes[k].curve.getPointAt(phase, m.position);
-    });
+  }
+  // the mast the stair winds around
+  out.push(beam(new Vector3(0, 0, 0), new Vector3(0, deck + 7, 0), 0.7));
 
-    // Start a boarded rider from the platform, then carry them down the first
-    // flume. The live seat is transformed from the ride's local space.
-    const riding = explore.state.riding === `waterSlide${index}`;
-    if (riding && boardTime.current < 0) boardTime.current = t;
-    if (!riding) boardTime.current = -1;
-    const phase = riding ? Math.min(((t - boardTime.current) * 0.22) % 1, 0.98) : (t * 0.17) % 1;
-    const point = flumes[0].curve.getPointAt(phase);
-    const tangent = flumes[0].curve.getTangentAt(Math.min(phase, 0.97));
+  // deck railings, left open at each flume gate
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    const gate = FLUME_YAW.some((g) => Math.abs(((a - g + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.34);
+    if (gate) continue;
+    const b = ((i + 1) / 48) * Math.PI * 2;
+    const R = 7.6;
+    out.push(
+      beam(
+        new Vector3(Math.cos(a) * R, deck, Math.sin(a) * R),
+        new Vector3(Math.cos(a) * R, deck + 2.4, Math.sin(a) * R),
+        0.14,
+      ),
+    );
+    out.push(
+      beam(
+        new Vector3(Math.cos(a) * R, deck + 2.4, Math.sin(a) * R),
+        new Vector3(Math.cos(b) * R, deck + 2.4, Math.sin(b) * R),
+        0.12,
+      ),
+    );
+  }
+
+  // the trough brackets, once per flume, rotated into place
+  for (const yaw of FLUME_YAW) {
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    const spin = (v: Vector3) => new Vector3(c * v.x - s * v.z, v.y, s * v.x + c * v.z);
+    for (const b of brackets) out.push(beam(spin(b.from), spin(b.to), 0.24));
+  }
+
+  return out;
+}
+
+/**
+ * A flume tower.
+ *
+ * One trough geometry, built once for the whole park and hung three times at
+ * 120° — see `lib/park/flume` for why that particular arrangement is the only
+ * one that keeps the three slides out of each other. The rider is carried by
+ * the same banked frame the trough was swept from, at the speed energy
+ * conservation says they should be going, so the ride accelerates into the
+ * steep middle of the spiral and coasts out across the pool.
+ */
+function WaterSlide({ slot, index }: { slot: Slot; index: number }) {
+  const data = useMemo(() => flume(), []);
+  const steel = useMemo(() => towerSteel(data.brackets), [data]);
+  const surface = useRef<Mesh>(null);
+  const flows = useRef<(Mesh | null)[]>([]);
+  const rafts = useRef<(Group | null)[]>([]);
+  const pose = useMemo(makePose, []);
+
+  /** Ambient rafts, spread down the three slides. */
+  const traffic = useRef([0.08, 0.42, 0.74].map((f) => f * data.length));
+  /** The boarded rider: distance down the slide, and the pool timer. */
+  const ride = useRef({ s: 0, hold: -1 });
+
+  useFrame((state, dt) => {
+    const t = state.clock.elapsedTime;
+    const step = Math.min(dt, 0.05);
+
+    // Pool ripples: nudge the normal map around rather than displace the mesh.
+    const mat = surface.current?.material as MeshStandardMaterial | undefined;
+    if (mat?.normalMap) mat.normalMap.offset.set(Math.sin(t * 0.09) * 0.05, t * 0.014);
+
+    // The sheet in each trough runs downhill. The UV's v axis is arc length,
+    // so scrolling it is literally the water moving down the slide.
+    for (const m of flows.current) {
+      const fm = m?.material as MeshStandardMaterial | undefined;
+      if (fm?.normalMap) fm.normalMap.offset.y = -t * 0.9;
+    }
+
+    // Rafts nobody is in, running the slides on the same physics as the rider.
+    for (let k = 0; k < 3; k++) {
+      const g = rafts.current[k];
+      if (!g) continue;
+      slidePose(data, traffic.current[k], pose);
+      traffic.current[k] += pose.v * step;
+      if (traffic.current[k] > data.length + SPLASH_RUN * 1.4) traffic.current[k] = 0;
+      g.position.copy(pose.pos).addScaledVector(pose.up, -FLUME.trough + RAFT_FLOAT);
+      basis.makeBasis(scratchA.copy(pose.left).negate(), pose.up, pose.fwd);
+      g.quaternion.setFromRotationMatrix(basis);
+    }
+
+    /* ── the rider ─────────────────────────────────────────────────────────── */
+
+    const key = `waterSlide${index}`;
+    const seat = seats[key];
+    if (!seat) return;
+    const riding = explore.state.riding === key;
+
+    if (!riding) {
+      ride.current.s = 0;
+      ride.current.hold = -1;
+    } else if (ride.current.hold >= 0) {
+      // bobbing in the pool at the bottom
+      if (t - ride.current.hold > SPLASH_HOLD) {
+        ride.current.hold = -1;
+        ride.current.s = 0;
+      }
+    } else {
+      slidePose(data, ride.current.s, pose);
+      ride.current.s += pose.v * step;
+      if (ride.current.s > data.length + SPLASH_RUN) ride.current.hold = t;
+    }
+
+    slidePose(data, ride.current.s, pose);
+
+    // Sit on the trough floor, not on its axis. Riding the centreline is what
+    // put the old camera inside the wall.
+    scratchA.copy(pose.pos).addScaledVector(pose.up, -FLUME.trough + EYE_IN_TROUGH);
+    if (ride.current.hold >= 0) {
+      scratchA.y += Math.sin((t - ride.current.hold) * 2.4) * 0.16;
+    }
+
+    // Out of the tower's local frame and into the park's.
     const c = Math.cos(slot.rot);
     const s = Math.sin(slot.rot);
-    const key = `waterSlide${index}`;
-    if (seats[key]) {
-      seats[key].pos.set(
-        slot.x + c * point.x + s * point.z,
-        point.y,
-        slot.z - s * point.x + c * point.z,
-      );
-      seats[key].yaw = Math.atan2(
-        c * tangent.x + s * tangent.z,
-        -s * tangent.x + c * tangent.z,
-      );
-    }
+    seat.pos.set(
+      slot.x + c * scratchA.x + s * scratchA.z,
+      scratchA.y,
+      slot.z - s * scratchA.x + c * scratchA.z,
+    );
+    const fx = c * pose.fwd.x + s * pose.fwd.z;
+    const fz = -s * pose.fwd.x + c * pose.fwd.z;
+    seat.yaw = Math.atan2(fx, fz);
+    seat.pitch = Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)));
+    seat.roll = pose.bank;
   });
 
-  const water = paintedSteel(6);
+  const steelSkin = paintedSteel(6);
+  const pool = paintedSteel(9);
 
   return (
     <group position={[slot.x, 0, slot.z]} rotation={[0, slot.rot, 0]}>
-      {/* splash pool */}
-      <mesh position={[0, 0.3, 0]} receiveShadow>
-        <cylinderGeometry args={[R_POOL, R_POOL + 1.5, 0.6, 40]} />
-        <meshStandardMaterial color="#cfd6e0" roughness={0.8} />
+      {/* deck and coping around the pool */}
+      <mesh position={[0, 0.42, 0]} receiveShadow>
+        <cylinderGeometry args={[FLUME.poolR + 4.5, FLUME.poolR + 5.5, 0.84, 48]} />
+        <meshStandardMaterial color="#b9b2a4" roughness={0.92} map={pool.map} />
       </mesh>
-      <mesh ref={surface} position={[0, 0.75, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[R_POOL - 1, 48]} />
+      {/* the basin, sunk below the coping */}
+      <mesh position={[0, 0.7, 0]} receiveShadow>
+        <cylinderGeometry args={[FLUME.poolR, FLUME.poolR - 1.2, 1.4, 48]} />
+        <meshStandardMaterial color="#7fd6ea" roughness={0.5} side={DoubleSide} />
+      </mesh>
+      <mesh ref={surface} position={[0, FLUME.waterY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[FLUME.poolR - 0.4, 56]} />
         <meshStandardMaterial
-          color="#0d5f7a"
+          color="#0f6b8c"
           roughness={0.045}
           metalness={0.2}
-          normalMap={water.normalMap}
-          normalScale={[0.32, 0.32]}
+          normalMap={steelSkin.normalMap}
+          normalScale={[0.34, 0.34]}
           envMapIntensity={2.4}
           transparent
-          opacity={0.94}
+          opacity={0.9}
         />
       </mesh>
       {/* underwater lighting, the thing that makes a pool glow at night */}
-      <mesh position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[R_POOL - 5, R_POOL - 1.4, 40]} />
-        <meshBasicMaterial color="#4fe0ff" transparent opacity={0.5} toneMapped={false} />
+      <mesh position={[0, FLUME.waterY - 0.25, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[FLUME.poolR - 5, FLUME.poolR - 1.4, 44]} />
+        <meshBasicMaterial color="#4fe0ff" transparent opacity={0.45} toneMapped={false} />
       </mesh>
 
-      <Frame pieces={tower} color="#6e7686" />
+      <Frame pieces={steel} color="#7c8494" />
 
-      {/* the flumes */}
-      {flumes.map((f, k) => (
-        <group key={k}>
-          <mesh castShadow>
-            <tubeGeometry args={[f.curve, 150, 1.9, 10, false]} />
+      {FLUME_YAW.map((yaw, k) => (
+        <group key={k} rotation={[0, yaw, 0]}>
+          {/* the trough, plus its rolled rims, in one buffer */}
+          <mesh geometry={data.shell} castShadow receiveShadow>
             <meshPhysicalMaterial
-              color={f.colour}
-              roughness={0.2}
-              metalness={0.05}
-              clearcoat={0.9}
-              transparent
-              opacity={0.72}
+              color={FLUME_COLOURS[k]}
+              roughness={0.28}
+              metalness={0.04}
+              clearcoat={0.85}
+              clearcoatRoughness={0.2}
               side={DoubleSide}
             />
           </mesh>
-          <mesh ref={(el) => void (riders.current[k] = el)}>
-            <sphereGeometry args={[1.15, 10, 8]} />
-            <meshBasicMaterial color="#ffffff" toneMapped={false} />
+          {/* the sheet of water running down it */}
+          <mesh geometry={data.water} ref={(el) => void (flows.current[k] = el)}>
+            <meshStandardMaterial
+              color="#9fe8ff"
+              roughness={0.08}
+              metalness={0.1}
+              normalMap={steelSkin.normalMap}
+              normalScale={[0.55, 0.55]}
+              envMapIntensity={2.2}
+              transparent
+              opacity={0.55}
+              side={DoubleSide}
+            />
           </mesh>
+
+          {/* start tub bridging the deck out to the gate */}
+          <mesh position={[FLUME.rTop - 1.6, FLUME.deck - 0.35, 0]} castShadow>
+            <boxGeometry args={[6.4, 0.7, 6.2]} />
+            <meshStandardMaterial color="#48505f" roughness={0.75} metalness={0.35} />
+          </mesh>
+          {/* the jet that keeps the slide wet */}
+          <mesh position={[FLUME.rTop - 4.4, FLUME.deck + 0.9, 0]} castShadow>
+            <cylinderGeometry args={[0.34, 0.34, 2.6, 8]} />
+            <meshStandardMaterial color="#c8ced8" roughness={0.4} metalness={0.7} />
+          </mesh>
+
+          {/* an unoccupied raft doing laps — sized to the channel width at
+              RAFT_FLOAT, not to look right in isolation */}
+          <group ref={(el) => void (rafts.current[k] = el)}>
+            <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+              <torusGeometry args={[RAFT_R, RAFT_TUBE, 8, 16]} />
+              <meshStandardMaterial color="#f7d64a" roughness={0.55} />
+            </mesh>
+            <mesh position={[0, 0.42, -0.08]}>
+              <sphereGeometry args={[0.36, 10, 8]} />
+              <meshStandardMaterial color="#e8b48f" roughness={0.8} />
+            </mesh>
+          </group>
         </group>
       ))}
 
-      {/* platform */}
-      <mesh position={[0, H - 1, 0]} castShadow>
-        <cylinderGeometry args={[6, 6, 1.2, 16]} />
-        <meshStandardMaterial color="#3a4150" roughness={0.7} metalness={0.4} />
+      {/* platform deck and its canopy */}
+      <mesh position={[0, FLUME.deck - 0.4, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[7.6, 7.6, 0.8, 24]} />
+        <meshStandardMaterial color="#3f4756" roughness={0.72} metalness={0.4} />
       </mesh>
-      <mesh position={[0, H + 3, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[6, 0.26, 6, 24]} />
+      <mesh position={[0, FLUME.deck + 5.4, 0]} castShadow>
+        <coneGeometry args={[9.2, 3.4, 8]} />
+        <meshStandardMaterial color="#2f6f86" roughness={0.68} metalness={0.2} />
+      </mesh>
+      <mesh position={[0, FLUME.deck + 3.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[7.7, 0.22, 6, 28]} />
         <meshBasicMaterial color="#4fe0ff" toneMapped={false} />
       </mesh>
     </group>
@@ -1258,7 +1433,7 @@ export function Funfair() {
         <WaterTower key={`w${i}`} slot={s} />
       ))}
       {FURNITURE.waterSlide.map((s, i) => (
-        <WaterSlide key={`f${i}`} slot={s} seed={i * 2.1} index={i} />
+        <WaterSlide key={`f${i}`} slot={s} index={i} />
       ))}
       {FURNITURE.pirateShip.map((s, i) => (
         <PirateShip key={`p${i}`} slot={s} index={i} />
